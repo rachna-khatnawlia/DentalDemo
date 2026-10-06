@@ -13,6 +13,9 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useDispatch } from "react-redux";
+import { setIntroShown } from "../../redux/slice/authSlice";
 import colors from "../../constants/colors";
 import fontFamily from "../../constants/fontFamily";
 import imagepath from "../../constants/imagepath";
@@ -30,6 +33,7 @@ interface IntroScreenProps {
 
 const IntroScreen: React.FC<IntroScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const dispatch = useDispatch();
 
   // Floating tooth animation
   const floatAnim = useRef(new Animated.Value(0)).current;
@@ -38,10 +42,26 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ navigation }) => {
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [sliderWidth, setSliderWidth] = useState(0);
   const isNavigating = useRef(false);
+  const isIntroClicked = useRef(false);
 
   const KNOB_SIZE = moderateScale(48);
   const PADDING = moderateScale(5);
   const maxSlide = Math.max(0, sliderWidth - KNOB_SIZE - PADDING * 2);
+
+  // Check storage on mount: if already shown, navigate directly to Login
+  useEffect(() => {
+    const checkAlreadyShown = async () => {
+      try {
+        const value = await AsyncStorage.getItem("isIntroShown");
+        if (value === "true") {
+          navigation.replace(NavigationStrings.LOGIN);
+        }
+      } catch (e) {
+        console.log("Error checking isIntroShown in IntroScreen", e);
+      }
+    };
+    checkAlreadyShown();
+  }, [navigation]);
 
   useEffect(() => {
     // Gentle floating loop for 3D tooth
@@ -67,7 +87,9 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ navigation }) => {
   }, [floatAnim]);
 
   const handleGetStarted = () => {
-    if (isNavigating.current) return;
+    // Ensure Get Started can only be clicked once
+    if (isIntroClicked.current || isNavigating.current) return;
+    isIntroClicked.current = true;
     isNavigating.current = true;
 
     // Smooth completion animation
@@ -75,16 +97,14 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ navigation }) => {
       toValue: maxSlide > 0 ? maxSlide : 200,
       duration: 220,
       useNativeDriver: true,
-    }).start(() => {
-      navigation.navigate(NavigationStrings.LOGIN);
-      // Reset after a delay so if user comes back, button is reset
-      setTimeout(() => {
-        isNavigating.current = false;
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          useNativeDriver: true,
-        }).start();
-      }, 600);
+    }).start(async () => {
+      try {
+        await AsyncStorage.setItem("isIntroShown", "true");
+      } catch (e) {
+        console.log("Error saving isIntroShown to storage", e);
+      }
+      dispatch(setIntroShown(true));
+      navigation.replace(NavigationStrings.LOGIN);
     });
   };
 
@@ -222,7 +242,7 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#169BAA",
+    backgroundColor: colors.introTealBg,
   },
   heroContainer: {
     flex: 1.5,
@@ -248,7 +268,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: moderateScale(34),
     paddingHorizontal: moderateScale(24),
     justifyContent: "space-between",
-    shadowColor: "#002B36",
+    shadowColor: colors.cardShadowDark,
     shadowOffset: { width: 0, height: -8 },
     shadowOpacity: 0.1,
     shadowRadius: 18,
@@ -259,7 +279,7 @@ const styles = StyleSheet.create({
     width: moderateScale(60),
     height: moderateScale(60),
     borderRadius: moderateScale(10),
-    shadowColor: "#0A192F",
+    shadowColor: colors.primaryNavy,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 10,
@@ -272,14 +292,14 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fontFamily.bold,
     fontSize: textScale(22),
-    color: "#0F1E36",
+    color: colors.introTitleNavy,
     textAlign: "center",
     lineHeight: textScale(28),
   },
   subtitle: {
     fontFamily: fontFamily.regular,
     fontSize: textScale(12),
-    color: "#64748B",
+    color: colors.introTextSlate,
     textAlign: "center",
     lineHeight: textScale(18),
     marginTop: moderateScaleVertical(12),
@@ -292,11 +312,11 @@ const styles = StyleSheet.create({
     width: "100%",
     height: moderateScale(58),
     borderRadius: moderateScale(29),
-    backgroundColor: "#00B4D8",
+    backgroundColor: colors.sliderCyan,
     overflow: "hidden",
     justifyContent: "center",
     position: "relative",
-    shadowColor: "#00B4D8",
+    shadowColor: colors.sliderCyan,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 12,
@@ -319,7 +339,7 @@ const styles = StyleSheet.create({
     width: moderateScale(48),
     height: moderateScale(48),
     borderRadius: moderateScale(24),
-    shadowColor: "#4F46E5",
+    shadowColor: colors.sliderKnobShadow,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.35,
     shadowRadius: 6,
@@ -329,7 +349,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: moderateScale(24),
-    backgroundColor: "#7C3AED",
+    backgroundColor: colors.sliderKnobPurple,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -345,7 +365,7 @@ const styles = StyleSheet.create({
   signInPrompt: {
     fontFamily: fontFamily.medium,
     fontSize: textScale(12),
-    color: "#94A3B8",
+    color: colors.textMuted,
   },
   signInLink: {
     fontFamily: fontFamily.semiBold,

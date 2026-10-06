@@ -1,18 +1,30 @@
-//import liraries
 import React, { Component } from "react";
-import { View, Text, StyleSheet, TextInput } from "react-native";
+import { View, Text, StyleSheet, TextInput, TextInputProps } from "react-native";
 import { moderateScale } from "../styles/responsiveSize";
 import colors from "../constants/colors";
 import commonstyle from "../styles/commonstyles";
 
+interface TextInputCompProps extends TextInputProps {
+  label?: string;
+  placeholder?: string;
+  inputStyle?: any;
+}
+
 // create a component
-const TextInputComp = ({ label = "", placeholder = "", inputStyle = {} }) => {
+const TextInputComp: React.FC<TextInputCompProps> = ({
+  label = "",
+  placeholder = "",
+  inputStyle = {},
+  ...rest
+}) => {
   return (
     <View style={styles.container}>
-      <Text style={commonstyle.semibold12}>{label}</Text>
+      {label ? <Text style={styles.labelStyle}>{label}</Text> : null}
       <TextInput
         placeholder={placeholder}
-        style={{ ...styles.inputStyle, ...inputStyle }}
+        placeholderTextColor={colors.textMuted}
+        style={[styles.inputStyle, inputStyle]}
+        {...rest}
       />
     </View>
   );
@@ -23,14 +35,20 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: moderateScale(15),
   },
+  labelStyle: {
+    ...commonstyle.semibold12,
+    color: colors.textPrimary,
+  },
   inputStyle: {
-    backgroundColor: colors.grey_ee,
+    ...commonstyle.medium14,
+    backgroundColor: colors.bgLight,
     borderWidth: moderateScale(1),
-    borderColor: colors.grey_cc,
-    borderRadius: moderateScale(4),
-    marginTop: moderateScale(5),
-    paddingHorizontal: moderateScale(10),
-    ...commonstyle.medium12
+    borderColor: colors.borderLight,
+    borderRadius: moderateScale(8),
+    marginTop: moderateScale(6),
+    paddingHorizontal: moderateScale(14),
+    paddingVertical: moderateScale(12),
+    color: colors.textPrimary,
   },
   
 });

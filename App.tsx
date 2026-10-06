@@ -23,7 +23,7 @@ const App = () => {
     <SafeAreaProvider>
       <Provider store={store}>
         <PersistGate loading={null} persistor={persistor}>
-          <StatusBar style="light" />
+          <StatusBar style="auto" />
           <AppLoader />
         </PersistGate>
       </Provider>

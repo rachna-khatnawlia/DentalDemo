@@ -10,6 +10,7 @@ const AuthWrapperContainer = ({children}:any) => {
     
     return (
         <View style={{...styles.container,paddingTop:insets.top}}>
+            <StatusBar style="dark" />
             {children}
         </View>
     );

@@ -1,6 +1,6 @@
-//import liraries
 import React, { Component } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import colors from '../../constants/colors';
 
 // create a component
 const Profile = () => {
@@ -17,7 +17,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#2c3e50',
+        backgroundColor: colors.profileBg,
     },
 });
 

@@ -1,7 +1,8 @@
-//import liraries
 import React, { Children, Component } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import colors from '../constants/colors';
 
 interface WrapperContainerProps {
   children?: React.ReactNode;
@@ -14,6 +15,7 @@ const WrapperContainer: React.FC<WrapperContainerProps> = ({ children, style }) 
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 10 }, style]}>
+      <StatusBar style="dark" />
       {children}
     </View>
   );
@@ -23,7 +25,7 @@ const WrapperContainer: React.FC<WrapperContainerProps> = ({ children, style }) 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
   },
 });
 

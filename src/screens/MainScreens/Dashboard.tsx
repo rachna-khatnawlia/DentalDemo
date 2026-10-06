@@ -79,7 +79,7 @@ const Dashboard = () => {
             <View style={styles.badge}>
               <Text style={styles.badgeText}>JCI & ISO ACCREDITED</Text>
             </View>
-            <View style={[styles.badge, { backgroundColor: 'rgba(0, 194, 203, 0.2)' }]}>
+            <View style={[styles.badge, { backgroundColor: colors.cyan_20 }]}>
               <Text style={[styles.badgeText, { color: colors.cyanGlow }]}>UP TO 70% SAVINGS</Text>
             </View>
           </View>
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(16),
     padding: moderateScale(18),
     borderWidth: 1,
-    borderColor: 'rgba(0, 194, 203, 0.2)',
+    borderColor: colors.cyan_20,
     marginBottom: moderateScaleVertical(20),
   },
   badgeRow: {
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     marginBottom: moderateScaleVertical(10),
   },
   badge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.white_10,
     paddingHorizontal: moderateScale(8),
     paddingVertical: moderateScaleVertical(4),
     borderRadius: moderateScale(6),
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   },
   countryChipActive: {
     borderColor: colors.primaryCyan,
-    backgroundColor: '#162b4d',
+    backgroundColor: colors.countryChipActiveBg,
   },
   countryFlag: {
     fontSize: textScale(22),
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     padding: moderateScale(16),
     marginBottom: moderateScaleVertical(14),
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: colors.white_05,
   },
   treatmentHeader: {
     flexDirection: 'row',
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
     width: moderateScale(42),
     height: moderateScale(42),
     borderRadius: moderateScale(10),
-    backgroundColor: 'rgba(0, 194, 203, 0.1)',
+    backgroundColor: colors.cyan_10,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: moderateScaleVertical(10),
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    borderTopColor: colors.white_08,
   },
   originalPrice: {
     color: colors.textMuted,

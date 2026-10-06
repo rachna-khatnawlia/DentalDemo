@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     width: moderateScale(38),
     height: moderateScale(38),
     borderRadius: moderateScale(10),
-    backgroundColor: "#F1F5F9",
+    backgroundColor: colors.backBtnBg,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: moderateScale(10),
