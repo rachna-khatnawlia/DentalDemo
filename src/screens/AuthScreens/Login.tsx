@@ -12,7 +12,7 @@ import { useDispatch } from "react-redux";
 import { onLogin } from "../../redux/slice/authSlice";
 
 // create a component
-const Login = () => {
+const Login = ({ navigation }: any) => {
   const dispatch = useDispatch();
 
   const handleLogin = () => {
@@ -21,12 +21,15 @@ const Login = () => {
 
   return (
     <AuthWrapperContainer>
-      <AuthHeader title="Dental Proposal Demo" des="Explore International Clinics & Treatments" />
+      <AuthHeader
+        title="Dental Proposal Demo"
+        des="Explore International Clinics & Treatments"
+      />
       <View style={{ padding: moderateScale(20), gap: moderateScale(14) }}>
-        <TextInputComp label="Email" placeholder="doctor@clinicdemo.com" />
+        <TextInputComp label="Email" placeholder="Enter Email Address" />
         <TextInputComp label="Password" placeholder="••••••••" />
 
-        <ButtonComp title="Sign In" onPress={handleLogin} />
+        {/* <ButtonComp title="Sign In" onPress={handleLogin} /> */}
 
         <ButtonComp
           title="⚡ Quick Demo Access"

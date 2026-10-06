@@ -1,5 +1,5 @@
 export default {
-    LOGIN:"Login",
-    
-    DASHBOARD: "Dashboard"
-}
+  INTRO: "IntroScreen",
+  LOGIN: "Login",
+  DASHBOARD: "Dashboard",
+};

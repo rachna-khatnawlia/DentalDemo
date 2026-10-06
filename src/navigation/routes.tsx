@@ -23,11 +23,7 @@ const Routes = () => {
           {accessToken ? (
             MainStack(Stack)
           ) : (
-            <Stack.Screen
-              name={NavigationStrings.LOGIN}
-              component={Login}
-              options={{ headerShown: false }}
-            />
+            AuthStack(Stack)
           )}
         </Stack.Navigator>
       </NavigationContainer>

@@ -7,7 +7,7 @@ import { persistor, store } from "./src/redux/store";
 import { PersistGate } from "redux-persist/integration/react";
 import AppLoader from "./AppLoader";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import useCachedResources from "./src/Utils/useCachedResources";
 
@@ -20,16 +20,14 @@ const App = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <SafeAreaView style={{ flex: 1 }}>
-        <Provider store={store}>
-          <PersistGate loading={null} persistor={persistor}>
-            <StatusBar style="dark" />
-            <AppLoader />
-          </PersistGate>
-        </Provider>
-      </SafeAreaView>
-    </View>
+    <SafeAreaProvider>
+      <Provider store={store}>
+        <PersistGate loading={null} persistor={persistor}>
+          <StatusBar style="light" />
+          <AppLoader />
+        </PersistGate>
+      </Provider>
+    </SafeAreaProvider>
   );
 };
 
