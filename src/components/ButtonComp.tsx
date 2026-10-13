@@ -33,23 +33,26 @@ const ButtonComp: React.FC<ButtonCompProps> = ({
 // define your styles
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.primaryNavy,
+    backgroundColor: colors.primaryBlue,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: moderateScaleVertical(14),
-    borderRadius: moderateScale(10),
-    shadowColor: colors.primaryNavy,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 3,
+    paddingVertical: moderateScaleVertical(15),
+    paddingHorizontal: moderateScale(20),
+    borderRadius: moderateScale(28),
+    shadowColor: colors.primaryBlue,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    elevation: 4,
   },
   text: {
     color: colors.white,
     fontFamily: fontFamily.semiBold,
-    fontSize: textScale(14),
+    fontSize: textScale(15),
+    letterSpacing: 0.2,
   },
 });
 
 //make this component available to the app
 export default ButtonComp;
+

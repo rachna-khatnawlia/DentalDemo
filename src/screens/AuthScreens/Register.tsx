@@ -46,7 +46,7 @@ const Register = ({ navigation }: any) => {
         >
           <AuthHeader
             title="Create Account"
-            des="Sign up with your mobile number to explore international dental proposals"
+            des="Sign up to find expert dentists and book appointments near you"
             showBack={true}
             onBack={() => navigation.goBack()}
           />
@@ -54,7 +54,7 @@ const Register = ({ navigation }: any) => {
           <View style={styles.formContainer}>
             <TextInputComp
               label="Full Name"
-              placeholder="e.g. Sarah Jenkins"
+              placeholder="e.g.  Sharma"
               value={fullName}
               onChangeText={setFullName}
             />
@@ -94,18 +94,18 @@ const styles = StyleSheet.create({
     paddingBottom: moderateScaleVertical(40),
   },
   formContainer: {
-    paddingHorizontal: moderateScale(20),
+    paddingHorizontal: moderateScale(24),
     paddingTop: moderateScale(10),
   },
   submitBtn: {
-    marginTop: moderateScaleVertical(12),
-    backgroundColor: colors.primaryNavy,
+    marginTop: moderateScaleVertical(14),
+    backgroundColor: colors.primaryBlue,
   },
   loginRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: moderateScaleVertical(20),
+    marginTop: moderateScaleVertical(24),
   },
   loginPrompt: {
     fontFamily: fontFamily.regular,
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   loginLink: {
     fontFamily: fontFamily.bold,
     fontSize: textScale(13),
-    color: colors.primaryCyan,
+    color: colors.primaryBlue,
   },
 });
 

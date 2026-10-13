@@ -192,18 +192,18 @@ const styles = StyleSheet.create({
   otpBox: {
     width: moderateScale(60),
     height: moderateScale(60),
-    borderRadius: moderateScale(12),
+    borderRadius: moderateScale(14),
     borderWidth: 1.5,
     borderColor: colors.borderLight,
     backgroundColor: colors.bgLight,
     textAlign: "center",
     fontSize: textScale(22),
     fontFamily: fontFamily.bold,
-    color: colors.primaryNavy,
+    color: colors.primaryBlue,
   },
   otpBoxFilled: {
-    borderColor: colors.primaryCyan,
-    backgroundColor: colors.white,
+    borderColor: colors.primaryBlue,
+    backgroundColor: colors.primaryBlueSubtle,
   },
   resendContainer: {
     marginBottom: moderateScaleVertical(24),
@@ -215,16 +215,16 @@ const styles = StyleSheet.create({
   },
   timerHighlight: {
     fontFamily: fontFamily.semiBold,
-    color: colors.primaryCyan,
+    color: colors.primaryBlue,
   },
   resendActiveText: {
     fontFamily: fontFamily.bold,
     fontSize: textScale(14),
-    color: colors.primaryCyan,
+    color: colors.primaryBlue,
   },
   verifyBtn: {
     width: "100%",
-    backgroundColor: colors.primaryNavy,
+    backgroundColor: colors.primaryBlue,
   },
   changeNumberRow: {
     flexDirection: "row",
@@ -240,8 +240,9 @@ const styles = StyleSheet.create({
   changeNumberLink: {
     fontFamily: fontFamily.bold,
     fontSize: textScale(13),
-    color: colors.primaryCyan,
+    color: colors.primaryBlue,
   },
 });
+
 
 export default VerifyOtp;

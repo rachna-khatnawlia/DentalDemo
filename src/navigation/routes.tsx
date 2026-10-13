@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { setIntroShown } from "../redux/slice/authSlice";
 import MainStack from "./MainStack";
 import AuthStack from "./AuthStack";
+import SplashScreen from "../screens/AuthScreens/SplashScreen";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
@@ -34,6 +35,8 @@ const Routes = () => {
     checkStorageIntro();
   }, [isIntroShown, dispatch]);
 
+  const [showSplash, setShowSplash] = useState(true);
+
   const hasSeenIntro = Boolean(isIntroShown || localIntroShown);
 
   return (
@@ -43,6 +46,7 @@ const Routes = () => {
           {accessToken ? MainStack(Stack) : AuthStack(Stack, hasSeenIntro)}
         </Stack.Navigator>
       </NavigationContainer>
+      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
     </View>
   );
 };

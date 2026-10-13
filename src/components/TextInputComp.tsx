@@ -33,25 +33,25 @@ const TextInputComp: React.FC<TextInputCompProps> = ({
 // define your styles
 const styles = StyleSheet.create({
   container: {
-    marginBottom: moderateScale(15),
+    marginBottom: moderateScale(16),
   },
   labelStyle: {
     ...commonstyle.semibold12,
     color: colors.textPrimary,
+    marginBottom: moderateScale(4),
   },
   inputStyle: {
     ...commonstyle.medium14,
-    backgroundColor: colors.bgLight,
-    borderWidth: moderateScale(1),
+    backgroundColor: colors.white,
+    borderWidth: 1,
     borderColor: colors.borderLight,
-    borderRadius: moderateScale(8),
-    marginTop: moderateScale(6),
-    paddingHorizontal: moderateScale(14),
-    paddingVertical: moderateScale(12),
+    borderRadius: moderateScale(12),
+    paddingHorizontal: moderateScale(16),
+    paddingVertical: moderateScale(13),
     color: colors.textPrimary,
   },
-  
 });
 
 //make this component available to the app
 export default TextInputComp;
+

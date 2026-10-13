@@ -1,363 +1,716 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
-import { useDispatch } from 'react-redux';
-import { onLogout } from '../../redux/slice/authSlice';
-import colors from '../../constants/colors';
-import fontFamily from '../../constants/fontFamily';
-import { moderateScale, moderateScaleVertical, textScale } from '../../styles/responsiveSize';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Image,
+  Dimensions,
+} from "react-native";
+import { StatusBar } from "expo-status-bar";
+import { useDispatch } from "react-redux";
+import { onLogout } from "../../redux/slice/authSlice";
+import colors from "../../constants/colors";
+import fontFamily from "../../constants/fontFamily";
+import imagepath from "../../constants/imagepath";
+import NavigationStrings from "../../navigation/NavigationStrings";
+import {
+  moderateScale,
+  moderateScaleVertical,
+  textScale,
+} from "../../styles/responsiveSize";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
-const COUNTRIES = [
-  { id: '1', name: 'Switzerland', flag: '🇨🇭', city: 'Zurich', savings: '45%' },
-  { id: '2', name: 'Turkey', flag: '🇹🇷', city: 'Istanbul', savings: '70%' },
-  { id: '3', name: 'UAE', flag: '🇦🇪', city: 'Dubai', savings: '50%' },
-  { id: '4', name: 'Mexico', flag: '🇲🇽', city: 'Cancun', savings: '65%' },
-  { id: '5', name: 'Spain', flag: '🇪🇸', city: 'Barcelona', savings: '55%' },
+const { width } = Dimensions.get("window");
+
+const CATEGORIES = [
+  {
+    id: "1",
+    title: "General\nDentistry",
+    icon: "tooth-outline",
+    iconSet: "mci",
+  },
+  {
+    id: "2",
+    title: "Teeth\nCleaning",
+    icon: "sparkles-outline",
+    iconSet: "ion",
+  },
+  { id: "3", title: "Orthodontics", icon: "tooth", iconSet: "mci" },
+  {
+    id: "4",
+    title: "Cosmetic\nDentistry",
+    icon: "emoticon-happy-outline",
+    iconSet: "mci",
+  },
 ];
 
-const TREATMENTS = [
+const TOP_DENTISTS = [
   {
-    id: '1',
-    title: 'All-on-4 / All-on-6 Implants',
-    subtitle: 'Full arch restoration with premium titanium screws',
-    duration: '3-5 Days',
-    price: '$4,200',
-    originalPrice: '$16,000',
-    icon: 'tooth',
-    rating: '4.9 (340+ reviews)',
+    id: "1",
+    name: "Dr. Rohan Mehta",
+    degree: "BDS, MDS - Orthodontist",
+    rating: "4.8",
+    reviewsCount: "320",
+    distance: "2 km away",
+    location: "SmileCare Dental Clinic, New Delhi",
+    image: imagepath.dentistRohan,
   },
   {
-    id: '2',
-    title: 'Hollywood Smile & E-Max Veneers',
-    subtitle: 'Custom CAD/CAM handcrafted porcelain veneers',
-    duration: '4 Days',
-    price: '$2,800',
-    originalPrice: '$9,500',
-    icon: 'star-outline',
-    rating: '5.0 (520+ reviews)',
-  },
-  {
-    id: '3',
-    title: 'Laser Teeth Whitening & Hygiene',
-    subtitle: 'Philips Zoom 4 medical grade deep shade lift',
-    duration: '60 Mins',
-    price: '$350',
-    originalPrice: '$950',
-    icon: 'flash-outline',
-    rating: '4.8 (210+ reviews)',
+    id: "2",
+    name: "Dr. Priya Sharma",
+    degree: "BDS - Cosmetic Dentist",
+    rating: "4.7",
+    reviewsCount: "210",
+    distance: "3 km away",
+    location: "DentArc Aesthetic Center, New Delhi",
+    image: imagepath.dentistPriya,
   },
 ];
 
-const Dashboard = () => {
+const Dashboard = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
-  const [selectedCountry, setSelectedCountry] = useState('2'); // Turkey default
+
+  const [selectedCategory, setSelectedCategory] = useState("1");
+  const [activeTab, setActiveTab] = useState<
+    "home" | "appointments" | "explore" | "profile"
+  >("home");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleOpenDoctor = (doc: any) => {
+    navigation.navigate(NavigationStrings.DOCTOR_DETAIL, { doctor: doc });
+  };
+
+  const handleBookBanner = () => {
+    navigation.navigate(NavigationStrings.DOCTOR_DETAIL, {
+      doctor: TOP_DENTISTS[0],
+    });
+  };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.primaryNavy} />
+    <View style={styles.container}>
+      <StatusBar style="dark" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerSub}>Dental Clinic Proposal Demo</Text>
-          <Text style={styles.headerTitle}>Global Smile Network 🦷</Text>
-        </View>
+      {/* Top Header */}
+      <View
+        style={[
+          styles.header,
+          { paddingTop: insets.top + moderateScaleVertical(8) },
+        ]}
+      >
+        {/* Location Picker */}
+        <TouchableOpacity activeOpacity={0.7} style={styles.locationContainer}>
+          <Ionicons
+            name="location"
+            size={moderateScale(18)}
+            color={colors.primaryBlue}
+          />
+          <Text style={styles.locationText}>New Delhi</Text>
+          <Ionicons
+            name="chevron-down"
+            size={moderateScale(14)}
+            color={colors.textPrimary}
+          />
+        </TouchableOpacity>
+
+        {/* Notification Bell with Badge */}
         <TouchableOpacity
-          onPress={() => dispatch(onLogout())}
-          style={styles.logoutButton}
+          activeOpacity={0.7}
+          style={styles.notificationBtn}
+          onPress={() => navigation.navigate(NavigationStrings.NOTIFICATIONS)}
         >
-          <Ionicons name="log-out-outline" size={20} color={colors.white} />
+          <Ionicons
+            name="notifications-outline"
+            size={moderateScale(22)}
+            color={colors.textPrimary}
+          />
+          <View style={styles.notificationBadge} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Hero Card */}
-        <View style={styles.heroCard}>
-          <View style={styles.badgeRow}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>JCI & ISO ACCREDITED</Text>
-            </View>
-            <View style={[styles.badge, { backgroundColor: colors.cyan_20 }]}>
-              <Text style={[styles.badgeText, { color: colors.cyanGlow }]}>UP TO 70% SAVINGS</Text>
-            </View>
-          </View>
-          <Text style={styles.heroTitle}>Premium International Dental Care</Text>
-          <Text style={styles.heroDesc}>
-            VIP concierge packages including 3D CT scan, certified oral surgeons, and luxury hotel transfers.
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + moderateScaleVertical(85) },
+        ]}
+      >
+        {/* User Greeting */}
+        <View style={styles.greetingSection}>
+          <Text style={styles.greetingTitle}>Hello, Rachna👋</Text>
+          <Text style={styles.greetingSubtitle}>
+            How can we help you today?
           </Text>
         </View>
 
-        {/* Country Selector */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Select Clinic Destination</Text>
-          <Text style={styles.sectionBadge}>5 Countries</Text>
+        {/* Search Bar with Filter Icon */}
+        <View style={styles.searchRow}>
+          <View style={styles.searchBox}>
+            <Ionicons
+              name="search-outline"
+              size={moderateScale(18)}
+              color={colors.textMuted}
+              style={{ marginRight: moderateScale(10) }}
+            />
+            <TextInput
+              placeholder="Search doctors, treatments..."
+              placeholderTextColor={colors.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.searchInput}
+            />
+          </View>
+          <TouchableOpacity activeOpacity={0.7} style={styles.filterBtn}>
+            <Ionicons
+              name="options-outline"
+              size={moderateScale(20)}
+              color={colors.primaryBlue}
+            />
+          </TouchableOpacity>
         </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.countryList}
-        >
-          {COUNTRIES.map((c) => {
-            const isSelected = selectedCountry === c.id;
+
+        {/* Promo Banner Card ("Healthy Teeth Happier You") */}
+        <View style={styles.bannerCard}>
+          <View style={styles.bannerLeft}>
+            <Text style={styles.bannerTitle}>Healthy Teeth</Text>
+            <Text style={styles.bannerTitleSub}>Happier You</Text>
+            <Text style={styles.bannerDesc}>
+              Get expert dental care from trusted specialists.
+            </Text>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handleBookBanner}
+              style={styles.bannerBookBtn}
+            >
+              <Text style={styles.bannerBookBtnText}>Book Appointment</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.bannerRight}>
+            <Image
+              source={imagepath.toothCharacter}
+              style={styles.bannerToothImage}
+              resizeMode="contain"
+            />
+          </View>
+        </View>
+
+        {/* Service Categories */}
+        <View style={styles.categoriesRow}>
+          {CATEGORIES.map((cat) => {
+            const isSelected = selectedCategory === cat.id;
             return (
               <TouchableOpacity
-                key={c.id}
-                onPress={() => setSelectedCountry(c.id)}
-                style={[
-                  styles.countryChip,
-                  isSelected && styles.countryChipActive,
-                ]}
+                key={cat.id}
+                activeOpacity={0.7}
+                onPress={() => setSelectedCategory(cat.id)}
+                style={styles.categoryItem}
               >
-                <Text style={styles.countryFlag}>{c.flag}</Text>
-                <Text
+                <View
                   style={[
-                    styles.countryName,
-                    isSelected && styles.countryNameActive,
+                    styles.categoryIconCircle,
+                    isSelected && styles.categoryIconCircleActive,
                   ]}
                 >
-                  {c.name}
+                  {cat.iconSet === "ion" ? (
+                    <Ionicons
+                      name={cat.icon as any}
+                      size={moderateScale(24)}
+                      color={colors.primaryBlue}
+                    />
+                  ) : (
+                    <MaterialCommunityIcons
+                      name={cat.icon as any}
+                      size={moderateScale(24)}
+                      color={colors.primaryBlue}
+                    />
+                  )}
+                </View>
+
+                <Text
+                  style={[
+                    styles.categoryTitle,
+                    isSelected && styles.categoryTitleActive,
+                  ]}
+                >
+                  {cat.title}
                 </Text>
-                <Text style={styles.countrySavings}>Save {c.savings}</Text>
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
-
-        {/* Featured Treatments */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Featured Treatment Packages</Text>
         </View>
 
-        {TREATMENTS.map((item) => (
-          <View key={item.id} style={styles.treatmentCard}>
-            <View style={styles.treatmentHeader}>
-              <View style={styles.treatmentIconBox}>
-                <MaterialCommunityIcons name="tooth-outline" size={24} color={colors.primaryCyan} />
+        {/* Top Dentists Section */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Top Dentists</Text>
+          <TouchableOpacity activeOpacity={0.7}>
+            <Text style={styles.seeAllText}>See All</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Doctor Cards */}
+        {TOP_DENTISTS.map((item) => (
+          <TouchableOpacity
+            key={item.id}
+            activeOpacity={0.85}
+            onPress={() => handleOpenDoctor(item)}
+            style={styles.doctorCard}
+          >
+            <Image
+              source={item.image}
+              style={styles.doctorAvatar}
+              resizeMode="cover"
+            />
+            <View style={styles.doctorInfo}>
+              <Text style={styles.doctorName}>{item.name}</Text>
+              <Text style={styles.doctorDegree}>{item.degree}</Text>
+
+              <View style={styles.ratingAndDistanceRow}>
+                <View style={styles.ratingBadge}>
+                  <Ionicons
+                    name="star"
+                    size={moderateScale(12)}
+                    color={colors.starYellow}
+                  />
+                  <Text style={styles.ratingValue}> {item.rating}</Text>
+                  <Text style={styles.reviewsCount}>
+                    {" "}
+                    ({item.reviewsCount} reviews)
+                  </Text>
+                </View>
               </View>
-              <View style={{ flex: 1, marginLeft: moderateScale(12) }}>
-                <Text style={styles.treatmentTitle}>{item.title}</Text>
-                <Text style={styles.treatmentDuration}>⏱ {item.duration} · {item.rating}</Text>
+
+              <View style={styles.distanceRow}>
+                <Ionicons
+                  name="location-outline"
+                  size={moderateScale(12)}
+                  color={colors.textSecondary}
+                />
+                <Text style={styles.distanceText}> {item.distance}</Text>
               </View>
             </View>
 
-            <Text style={styles.treatmentSub}>{item.subtitle}</Text>
-
-            <View style={styles.priceRow}>
-              <View>
-                <Text style={styles.originalPrice}>US/UK Avg: {item.originalPrice}</Text>
-                <Text style={styles.packagePrice}>{item.price} <Text style={styles.packageNote}>all-inclusive</Text></Text>
-              </View>
-              <TouchableOpacity style={styles.bookButton}>
-                <Text style={styles.bookButtonText}>View Proposal</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+            <Ionicons
+              name="chevron-forward"
+              size={moderateScale(18)}
+              color={colors.textMuted}
+            />
+          </TouchableOpacity>
         ))}
+
+
       </ScrollView>
+
+      {/* Bottom Navigation Bar */}
+      <View
+        style={[
+          styles.bottomNav,
+          { paddingBottom: Math.max(insets.bottom, moderateScaleVertical(10)) },
+        ]}
+      >
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => setActiveTab("home")}
+          style={styles.navItem}
+        >
+          <Ionicons
+            name={activeTab === "home" ? "home" : "home-outline"}
+            size={moderateScale(22)}
+            color={activeTab === "home" ? colors.primaryBlue : colors.textMuted}
+          />
+          <Text
+            style={[
+              styles.navLabel,
+              activeTab === "home"
+                ? styles.navLabelActive
+                : styles.navLabelInactive,
+            ]}
+          >
+            Home
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => {
+            setActiveTab("appointments");
+            handleBookBanner();
+          }}
+          style={styles.navItem}
+        >
+          <Ionicons
+            name={
+              activeTab === "appointments" ? "calendar" : "calendar-outline"
+            }
+            size={moderateScale(22)}
+            color={
+              activeTab === "appointments"
+                ? colors.primaryBlue
+                : colors.textMuted
+            }
+          />
+          <Text
+            style={[
+              styles.navLabel,
+              activeTab === "appointments"
+                ? styles.navLabelActive
+                : styles.navLabelInactive,
+            ]}
+          >
+            Appointments
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => setActiveTab("explore")}
+          style={styles.navItem}
+        >
+          <Ionicons
+            name={activeTab === "explore" ? "compass" : "compass-outline"}
+            size={moderateScale(22)}
+            color={
+              activeTab === "explore" ? colors.primaryBlue : colors.textMuted
+            }
+          />
+          <Text
+            style={[
+              styles.navLabel,
+              activeTab === "explore"
+                ? styles.navLabelActive
+                : styles.navLabelInactive,
+            ]}
+          >
+            Explore
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => {
+            navigation.navigate(NavigationStrings.PROFILE);
+          }}
+          style={styles.navItem}
+        >
+          <Ionicons
+            name="person-outline"
+            size={moderateScale(22)}
+            color={colors.textMuted}
+          />
+          <Text style={[styles.navLabel, styles.navLabelInactive]}>
+            Profile
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
-// define your styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primaryNavy,
+    backgroundColor: colors.bgLight,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: moderateScale(20),
-    paddingVertical: moderateScaleVertical(14),
-    borderBottomWidth: 1,
-    borderBottomColor: colors.navyLight,
+    paddingBottom: moderateScaleVertical(10),
+    backgroundColor: colors.bgLight,
   },
-  headerSub: {
-    color: colors.primaryCyan,
-    fontFamily: fontFamily.medium,
-    fontSize: textScale(11),
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+  locationContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: moderateScale(4),
   },
-  headerTitle: {
-    color: colors.white,
-    fontFamily: fontFamily.bold,
-    fontSize: textScale(18),
-    marginTop: 2,
-  },
-  logoutButton: {
-    padding: moderateScale(8),
-    borderRadius: moderateScale(8),
-    backgroundColor: colors.navyLight,
-  },
-  scrollContent: {
-    padding: moderateScale(16),
-    paddingBottom: moderateScaleVertical(30),
-  },
-  heroCard: {
-    backgroundColor: colors.navyLight,
-    borderRadius: moderateScale(16),
-    padding: moderateScale(18),
-    borderWidth: 1,
-    borderColor: colors.cyan_20,
-    marginBottom: moderateScaleVertical(20),
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    gap: moderateScale(8),
-    marginBottom: moderateScaleVertical(10),
-  },
-  badge: {
-    backgroundColor: colors.white_10,
-    paddingHorizontal: moderateScale(8),
-    paddingVertical: moderateScaleVertical(4),
-    borderRadius: moderateScale(6),
-  },
-  badgeText: {
-    color: colors.white,
-    fontFamily: fontFamily.semiBold,
-    fontSize: textScale(9),
-    letterSpacing: 0.5,
-  },
-  heroTitle: {
-    color: colors.white,
-    fontFamily: fontFamily.bold,
-    fontSize: textScale(18),
-    marginBottom: moderateScaleVertical(6),
-  },
-  heroDesc: {
-    color: colors.textMuted,
-    fontFamily: fontFamily.regular,
-    fontSize: textScale(12),
-    lineHeight: 18,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: moderateScaleVertical(12),
-  },
-  sectionTitle: {
-    color: colors.white,
-    fontFamily: fontFamily.bold,
-    fontSize: textScale(15),
-  },
-  sectionBadge: {
-    color: colors.primaryCyan,
-    fontFamily: fontFamily.medium,
-    fontSize: textScale(12),
-  },
-  countryList: {
-    paddingBottom: moderateScaleVertical(18),
-    gap: moderateScale(10),
-  },
-  countryChip: {
-    backgroundColor: colors.navyLight,
-    paddingHorizontal: moderateScale(14),
-    paddingVertical: moderateScaleVertical(12),
-    borderRadius: moderateScale(12),
-    alignItems: 'center',
-    minWidth: moderateScale(105),
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  countryChipActive: {
-    borderColor: colors.primaryCyan,
-    backgroundColor: colors.countryChipActiveBg,
-  },
-  countryFlag: {
-    fontSize: textScale(22),
-    marginBottom: moderateScaleVertical(4),
-  },
-  countryName: {
-    color: colors.white,
-    fontFamily: fontFamily.semiBold,
-    fontSize: textScale(12),
-  },
-  countryNameActive: {
-    color: colors.primaryCyan,
-  },
-  countrySavings: {
-    color: colors.cyanGlow,
-    fontFamily: fontFamily.medium,
-    fontSize: textScale(10),
-    marginTop: 2,
-  },
-  treatmentCard: {
-    backgroundColor: colors.navyLight,
-    borderRadius: moderateScale(14),
-    padding: moderateScale(16),
-    marginBottom: moderateScaleVertical(14),
-    borderWidth: 1,
-    borderColor: colors.white_05,
-  },
-  treatmentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  treatmentIconBox: {
-    width: moderateScale(42),
-    height: moderateScale(42),
-    borderRadius: moderateScale(10),
-    backgroundColor: colors.cyan_10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  treatmentTitle: {
-    color: colors.white,
+  locationText: {
     fontFamily: fontFamily.bold,
     fontSize: textScale(14),
+    color: colors.textPrimary,
   },
-  treatmentDuration: {
-    color: colors.textMuted,
+  notificationBtn: {
+    width: moderateScale(40),
+    height: moderateScale(40),
+    borderRadius: moderateScale(20),
+    backgroundColor: colors.white,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    position: "relative",
+  },
+  notificationBadge: {
+    position: "absolute",
+    top: moderateScale(8),
+    right: moderateScale(10),
+    width: moderateScale(7),
+    height: moderateScale(7),
+    borderRadius: moderateScale(4),
+    backgroundColor: colors.primaryBlue,
+  },
+  scrollContent: {
+    paddingHorizontal: moderateScale(20),
+    paddingTop: moderateScaleVertical(10),
+  },
+  greetingSection: {
+    marginBottom: moderateScaleVertical(16),
+  },
+  greetingTitle: {
+    fontFamily: fontFamily.bold,
+    fontSize: textScale(22),
+    color: colors.textPrimary,
+  },
+  greetingSubtitle: {
     fontFamily: fontFamily.regular,
-    fontSize: textScale(11),
+    fontSize: textScale(13),
+    color: colors.textSecondary,
     marginTop: 2,
   },
-  treatmentSub: {
-    color: colors.textMuted,
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: moderateScale(10),
+    marginBottom: moderateScaleVertical(18),
+  },
+  searchBox: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: moderateScale(14),
+    paddingHorizontal: moderateScale(14),
+    height: moderateScale(48),
+  },
+  searchInput: {
+    flex: 1,
     fontFamily: fontFamily.regular,
-    fontSize: textScale(12),
-    marginVertical: moderateScaleVertical(10),
-    lineHeight: 18,
+    fontSize: textScale(13),
+    color: colors.textPrimary,
   },
-  priceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: moderateScaleVertical(10),
-    borderTopWidth: 1,
-    borderTopColor: colors.white_08,
+  filterBtn: {
+    width: moderateScale(48),
+    height: moderateScale(48),
+    borderRadius: moderateScale(14),
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  originalPrice: {
-    color: colors.textMuted,
-    fontSize: textScale(10),
-    fontFamily: fontFamily.regular,
-    textDecorationLine: 'line-through',
+  bannerCard: {
+    backgroundColor: colors.bannerBg,
+    borderRadius: moderateScale(20),
+    borderWidth: 1,
+    borderColor: colors.bannerBorder,
+    padding: moderateScale(18),
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: moderateScaleVertical(22),
+    overflow: "hidden",
   },
-  packagePrice: {
-    color: colors.primaryCyan,
+  bannerLeft: {
+    flex: 1.2,
+  },
+  bannerTitle: {
     fontFamily: fontFamily.bold,
-    fontSize: textScale(16),
+    fontSize: textScale(17),
+    color: colors.textPrimary,
+    lineHeight: textScale(22),
   },
-  packageNote: {
-    color: colors.textMuted,
+  bannerTitleSub: {
+    fontFamily: fontFamily.bold,
+    fontSize: textScale(17),
+    color: colors.primaryBlue,
+    lineHeight: textScale(22),
+  },
+  bannerDesc: {
     fontFamily: fontFamily.regular,
     fontSize: textScale(11),
+    color: colors.textSecondary,
+    marginTop: moderateScaleVertical(6),
+    lineHeight: 16,
   },
-  bookButton: {
-    backgroundColor: colors.primaryCyan,
-    paddingHorizontal: moderateScale(16),
-    paddingVertical: moderateScaleVertical(8),
-    borderRadius: moderateScale(8),
+  bannerBookBtn: {
+    backgroundColor: colors.primaryBlue,
+    paddingHorizontal: moderateScale(14),
+    paddingVertical: moderateScaleVertical(9),
+    borderRadius: moderateScale(20),
+    alignSelf: "flex-start",
+    marginTop: moderateScaleVertical(12),
   },
-  bookButtonText: {
-    color: colors.primaryNavy,
+  bannerBookBtnText: {
     fontFamily: fontFamily.bold,
     fontSize: textScale(12),
+    color: colors.white,
+  },
+  bannerRight: {
+    flex: 0.9,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bannerToothImage: {
+    width: moderateScale(110),
+    height: moderateScale(110),
+  },
+  categoriesRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: moderateScaleVertical(24),
+  },
+  categoryItem: {
+    alignItems: "center",
+    width: (width - moderateScale(40)) / 4.2,
+  },
+  categoryIconCircle: {
+    width: moderateScale(56),
+    height: moderateScale(56),
+    borderRadius: moderateScale(16),
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: moderateScaleVertical(8),
+  },
+  categoryIconCircleActive: {
+    backgroundColor: colors.primaryBlueLight,
+    borderColor: colors.primaryBlue,
+  },
+  categoryTitle: {
+    fontFamily: fontFamily.medium,
+    fontSize: textScale(11),
+    color: colors.textSecondary,
+    textAlign: "center",
+    lineHeight: textScale(14),
+  },
+  categoryTitleActive: {
+    fontFamily: fontFamily.semiBold,
+    color: colors.primaryBlue,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: moderateScaleVertical(14),
+  },
+  sectionTitle: {
+    fontFamily: fontFamily.bold,
+    fontSize: textScale(17),
+    color: colors.textPrimary,
+  },
+  seeAllText: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: textScale(13),
+    color: colors.primaryBlue,
+  },
+  doctorCard: {
+    backgroundColor: colors.white,
+    borderRadius: moderateScale(16),
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: moderateScale(14),
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: moderateScaleVertical(12),
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  doctorAvatar: {
+    width: moderateScale(60),
+    height: moderateScale(60),
+    borderRadius: moderateScale(14),
+  },
+  doctorInfo: {
+    flex: 1,
+    marginLeft: moderateScale(14),
+  },
+  doctorName: {
+    fontFamily: fontFamily.bold,
+    fontSize: textScale(14),
+    color: colors.textPrimary,
+  },
+  doctorDegree: {
+    fontFamily: fontFamily.medium,
+    fontSize: textScale(11),
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  ratingAndDistanceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: moderateScaleVertical(4),
+  },
+  ratingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  ratingValue: {
+    fontFamily: fontFamily.bold,
+    fontSize: textScale(11),
+    color: colors.textPrimary,
+  },
+  reviewsCount: {
+    fontFamily: fontFamily.regular,
+    fontSize: textScale(11),
+    color: colors.textMuted,
+  },
+  distanceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
+  },
+  distanceText: {
+    fontFamily: fontFamily.regular,
+    fontSize: textScale(11),
+    color: colors.textSecondary,
+  },
+
+  bottomNav: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSubtle,
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    paddingTop: moderateScaleVertical(8),
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  navItem: {
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
+  },
+  navLabel: {
+    fontFamily: fontFamily.medium,
+    fontSize: textScale(10),
+    marginTop: moderateScaleVertical(3),
+  },
+  navLabelActive: {
+    color: colors.primaryBlue,
+    fontFamily: fontFamily.semiBold,
+  },
+  navLabelInactive: {
+    color: colors.textMuted,
   },
 });
 

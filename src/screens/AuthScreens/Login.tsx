@@ -35,8 +35,8 @@ const Login = ({ navigation }: any) => {
   return (
     <AuthWrapperContainer>
       <AuthHeader
-        title="Dental Proposal Demo"
-        des="Explore International Clinics & Treatments"
+        title="DentaCare"
+        des="Healthy Smiles, Brighter Tomorrows"
       />
       <View style={styles.formContainer}>
         <TextInputComp
@@ -59,7 +59,7 @@ const Login = ({ navigation }: any) => {
           title="⚡ Quick Demo Access"
           onPress={handleQuickDemo}
           style={styles.demoBtn}
-          textStyle={{ color: colors.primaryNavy }}
+          textStyle={{ color: colors.primaryBlue }}
         />
 
         {/* Link to Register Page */}
@@ -80,21 +80,26 @@ const Login = ({ navigation }: any) => {
 // define your styles
 const styles = StyleSheet.create({
   formContainer: {
-    padding: moderateScale(20),
+    paddingHorizontal: moderateScale(24),
+    paddingTop: moderateScale(10),
   },
   getOtpBtn: {
-    backgroundColor: colors.primaryNavy,
-    marginTop: moderateScaleVertical(8),
+    backgroundColor: colors.primaryBlue,
+    marginTop: moderateScaleVertical(10),
   },
   demoBtn: {
-    backgroundColor: colors.primaryCyan,
+    backgroundColor: colors.primaryBlueLight,
+    borderWidth: 1,
+    borderColor: colors.bannerBorder,
     marginTop: moderateScaleVertical(12),
+    elevation: 0,
+    shadowOpacity: 0,
   },
   registerRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: moderateScaleVertical(22),
+    marginTop: moderateScaleVertical(24),
   },
   registerPrompt: {
     fontFamily: fontFamily.regular,
@@ -104,8 +109,9 @@ const styles = StyleSheet.create({
   registerLink: {
     fontFamily: fontFamily.bold,
     fontSize: textScale(13),
-    color: colors.primaryCyan,
+    color: colors.primaryBlue,
   },
 });
+
 
 export default Login;
