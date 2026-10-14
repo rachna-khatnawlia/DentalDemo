@@ -5,6 +5,7 @@ import DoctorDetail from "../screens/MainScreens/DoctorDetail";
 import BookAppointment from "../screens/MainScreens/BookAppointment";
 import Profile from "../screens/MainScreens/Profile";
 import NotificationScreen from "../screens/MainScreens/NotificationScreen";
+import EditProfile from "../screens/MainScreens/EditProfile";
 
 // create a component
 const MainStack = (Stack: any) => {
@@ -33,6 +34,11 @@ const MainStack = (Stack: any) => {
       <Stack.Screen
         name={NavigationStrings.NOTIFICATIONS}
         component={NotificationScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name={NavigationStrings.EDIT_PROFILE}
+        component={EditProfile}
         options={{ headerShown: false }}
       />
     </>

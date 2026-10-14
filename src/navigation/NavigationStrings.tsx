@@ -9,6 +9,7 @@ export default {
   BOOK_APPOINTMENT: "BookAppointment",
   PROFILE: "Profile",
   NOTIFICATIONS: "Notifications",
+  EDIT_PROFILE: "EditProfile",
 };
 
 

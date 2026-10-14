@@ -19,6 +19,7 @@ import colors from "../../constants/colors";
 import fontFamily from "../../constants/fontFamily";
 import imagepath from "../../constants/imagepath";
 import NavigationStrings from "../../navigation/NavigationStrings";
+import StatusBadge from "../../components/StatusBadge";
 import {
   moderateScale,
   moderateScaleVertical,
@@ -72,9 +73,7 @@ const Profile = ({ navigation }: any) => {
         <Text style={styles.headerTitle}>My Profile</Text>
         <TouchableOpacity
           activeOpacity={0.7}
-          onPress={() =>
-            Alert.alert("Profile", "Rachna's profile is up to date.")
-          }
+          onPress={() => navigation.navigate(NavigationStrings.EDIT_PROFILE)}
           style={styles.headerBtn}
         >
           <Ionicons
@@ -94,7 +93,11 @@ const Profile = ({ navigation }: any) => {
       >
         {/* User Hero Card */}
         <View style={styles.heroCard}>
-          <View style={styles.avatarContainer}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate(NavigationStrings.EDIT_PROFILE)}
+            style={styles.avatarContainer}
+          >
             <Image
               source={imagepath.userArjun}
               style={styles.avatarImage}
@@ -107,7 +110,7 @@ const Profile = ({ navigation }: any) => {
                 color={colors.white}
               />
             </View>
-          </View>
+          </TouchableOpacity>
 
           <Text style={styles.userName}>Rachna</Text>
           <Text style={styles.userEmail}>rachna@example.com</Text>
@@ -288,6 +291,48 @@ const Profile = ({ navigation }: any) => {
           </View>
         </View>
 
+        {/* Section: Account & Identity */}
+        <Text style={styles.sectionTitle}>Account & Identity</Text>
+        <View style={styles.cardGroup}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate(NavigationStrings.EDIT_PROFILE)}
+            style={[styles.menuRow, { borderBottomWidth: 0 }]}
+          >
+            <View style={styles.menuRowLeft}>
+              <View
+                style={[styles.menuIconBox, { backgroundColor: "#EFF6FF" }]}
+              >
+                <Ionicons
+                  name="person-outline"
+                  size={moderateScale(18)}
+                  color={colors.primaryBlue}
+                />
+              </View>
+              <View style={styles.menuTitleCol}>
+                <Text style={styles.menuRowTitle} numberOfLines={1}>
+                  Edit Profile
+                </Text>
+                <Text style={styles.menuRowSubtitle} numberOfLines={1}>
+                  Name, Mobile & Aadhaar Card
+                </Text>
+              </View>
+            </View>
+            <View style={styles.menuRowRight}>
+              <StatusBadge
+                label="Verified"
+                variant="success"
+                icon="shield-checkmark"
+              />
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={colors.textMuted}
+              />
+            </View>
+          </TouchableOpacity>
+        </View>
+
         {/* Section: Medical Records & Healthcare */}
         <Text style={styles.sectionTitle}>Dental Health & Records</Text>
         <View style={styles.cardGroup}>
@@ -311,11 +356,11 @@ const Profile = ({ navigation }: any) => {
                   color={colors.primaryBlue}
                 />
               </View>
-              <View>
-                <Text style={styles.menuRowTitle}>
+              <View style={styles.menuTitleCol}>
+                <Text style={styles.menuRowTitle} numberOfLines={1}>
                   Dental History & Prescriptions
                 </Text>
-                <Text style={styles.menuRowSubtitle}>
+                <Text style={styles.menuRowSubtitle} numberOfLines={1}>
                   View past checkups & notes
                 </Text>
               </View>
@@ -347,17 +392,26 @@ const Profile = ({ navigation }: any) => {
                   color="#16A34A"
                 />
               </View>
-              <View>
-                <Text style={styles.menuRowTitle}>
-                  Digital X-Rays & 3D Scans
+              <View style={styles.menuTitleCol}>
+                <Text style={styles.menuRowTitle} numberOfLines={1}>
+                  Digital X-Rays & Scans
                 </Text>
-                <Text style={styles.menuRowSubtitle}>
+                <Text style={styles.menuRowSubtitle} numberOfLines={1}>
                   2 Intraoral scans uploaded
                 </Text>
               </View>
             </View>
-            <View style={styles.newBadge}>
-              <Text style={styles.newBadgeText}>2 Scans</Text>
+            <View style={styles.menuRowRight}>
+              <StatusBadge
+                label="2 Scans"
+                variant="success"
+                showIcon={false}
+              />
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={colors.textMuted}
+              />
             </View>
           </TouchableOpacity>
 
@@ -381,9 +435,11 @@ const Profile = ({ navigation }: any) => {
                   color="#DC2626"
                 />
               </View>
-              <View>
-                <Text style={styles.menuRowTitle}>Dental Insurance Card</Text>
-                <Text style={styles.menuRowSubtitle}>
+              <View style={styles.menuTitleCol}>
+                <Text style={styles.menuRowTitle} numberOfLines={1}>
+                  Dental Insurance Card
+                </Text>
+                <Text style={styles.menuRowSubtitle} numberOfLines={1}>
                   SmileGuard · 80% coverage
                 </Text>
               </View>
@@ -410,9 +466,11 @@ const Profile = ({ navigation }: any) => {
                   color={colors.textPrimary}
                 />
               </View>
-              <View>
-                <Text style={styles.menuRowTitle}>Appointment Reminders</Text>
-                <Text style={styles.menuRowSubtitle}>
+              <View style={styles.menuTitleCol}>
+                <Text style={styles.menuRowTitle} numberOfLines={1}>
+                  Appointment Reminders
+                </Text>
+                <Text style={styles.menuRowSubtitle} numberOfLines={1}>
                   Receive SMS & Push alerts
                 </Text>
               </View>
@@ -443,11 +501,14 @@ const Profile = ({ navigation }: any) => {
                   color="#EF4444"
                 />
               </View>
-              <View>
-                <Text style={[styles.menuRowTitle, { color: "#EF4444" }]}>
+              <View style={styles.menuTitleCol}>
+                <Text
+                  style={[styles.menuRowTitle, { color: "#EF4444" }]}
+                  numberOfLines={1}
+                >
                   24/7 Dental Emergency Helpline
                 </Text>
-                <Text style={styles.menuRowSubtitle}>
+                <Text style={styles.menuRowSubtitle} numberOfLines={1}>
                   Immediate assistance for acute tooth pain
                 </Text>
               </View>
@@ -479,9 +540,11 @@ const Profile = ({ navigation }: any) => {
                   color={colors.textSecondary}
                 />
               </View>
-              <View>
-                <Text style={styles.menuRowTitle}>Help Center & FAQ</Text>
-                <Text style={styles.menuRowSubtitle}>
+              <View style={styles.menuTitleCol}>
+                <Text style={styles.menuRowTitle} numberOfLines={1}>
+                  Help Center & FAQ
+                </Text>
+                <Text style={styles.menuRowSubtitle} numberOfLines={1}>
                   Care guides and billing questions
                 </Text>
               </View>
@@ -924,12 +987,22 @@ const styles = StyleSheet.create({
     paddingVertical: moderateScaleVertical(14),
     borderBottomWidth: 1,
     borderBottomColor: colors.borderSubtle,
+    gap: moderateScale(8),
   },
   menuRowLeft: {
     flexDirection: "row",
     alignItems: "center",
     gap: moderateScale(12),
     flex: 1,
+  },
+  menuTitleCol: {
+    flex: 1,
+  },
+  menuRowRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: moderateScale(6),
+    flexShrink: 0,
   },
   menuIconBox: {
     width: moderateScale(38),
