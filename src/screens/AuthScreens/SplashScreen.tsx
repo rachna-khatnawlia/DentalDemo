@@ -6,6 +6,7 @@ import {
   Image,
   TouchableOpacity,
   Animated,
+  Easing,
   Dimensions,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -25,29 +26,31 @@ interface SplashScreenProps {
 
 const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const insets = useSafeAreaInsets();
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.96)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const brandScaleAnim = useRef(new Animated.Value(0.96)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Smooth fade & scale in
+    // Entrance animations
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 350,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
+      Animated.spring(brandScaleAnim, {
         toValue: 1,
         friction: 8,
         tension: 40,
         useNativeDriver: true,
       }),
+      Animated.timing(progressAnim, {
+        toValue: 1,
+        duration: 2200,
+        easing: Easing.bezier(0.3, 0.1, 0.3, 1),
+        useNativeDriver: false,
+      }),
     ]).start();
 
-    // Auto dismiss after 2.4s
+    // Auto dismiss after 2.6s
     const timer = setTimeout(() => {
       handleDismiss();
-    }, 2400);
+    }, 2600);
 
     return () => clearTimeout(timer);
   }, []);
@@ -55,33 +58,41 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const handleDismiss = () => {
     Animated.timing(fadeAnim, {
       toValue: 0,
-      duration: 300,
+      duration: 320,
       useNativeDriver: true,
     }).start(() => {
       onFinish?.();
     });
   };
 
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["25%", "100%"],
+  });
+
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       <StatusBar style="dark" />
 
-      {/* Decorative Background Curved Shapes matching reference mockup */}
-      <View style={styles.bgBlobTopLeft} />
-      <View style={styles.bgBlobRight} />
+      {/* Seamless full-screen 3D dental podium artwork background */}
+      <Image
+        source={imagepath.splashFullSeamless}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      />
 
       <TouchableOpacity
         activeOpacity={1}
         onPress={handleDismiss}
         style={styles.touchableArea}
       >
-        {/* Top & Middle Section: Logo, Title, Subtitle */}
+        {/* Top Brand Header: Logo, DentaCare & Subtitle */}
         <Animated.View
           style={[
             styles.brandSection,
             {
-              paddingTop: insets.top + moderateScaleVertical(45),
-              transform: [{ scale: scaleAnim }],
+              paddingTop: insets.top + moderateScaleVertical(18),
+              transform: [{ scale: brandScaleAnim }],
             },
           ]}
         >
@@ -97,13 +108,27 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           <Text style={styles.taglineSub}>Brighter Tomorrows</Text>
         </Animated.View>
 
-        {/* Bottom Section: Smiling Patient with Dentist hands & Instruments */}
-        <View style={styles.patientSection}>
-          <Image
-            source={imagepath.splashPatient}
-            style={styles.patientImage}
-            resizeMode="cover"
-          />
+        {/* Center breathing space so the 3D tooth podium shines through */}
+        <View style={styles.centerSpacer} />
+
+        {/* Bottom Section: Animated Loading Pill & Companion Subtitle */}
+        <View
+          style={[
+            styles.bottomSection,
+            { paddingBottom: insets.bottom + moderateScaleVertical(22) },
+          ]}
+        >
+          {/* Progress Bar Indicator Track */}
+          <View style={styles.progressBarTrack}>
+            <Animated.View
+              style={[styles.progressBarFill, { width: progressWidth }]}
+            />
+          </View>
+
+          {/* Slogan */}
+          <Text style={styles.companionText}>
+            Your trusted dental care companion
+          </Text>
         </View>
       </TouchableOpacity>
     </Animated.View>
@@ -112,52 +137,37 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "#F5F8FD",
-    zIndex: 9999,
+    flex: 1,
+    backgroundColor: "#D6ECF9",
+  },
+  backgroundImage: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
   },
   touchableArea: {
     flex: 1,
     justifyContent: "space-between",
+    alignItems: "center",
   },
 
-  // Soft organic decorative curves in background
-  bgBlobTopLeft: {
-    position: "absolute",
-    top: -moderateScale(60),
-    left: -moderateScale(60),
-    width: moderateScale(260),
-    height: moderateScale(260),
-    borderRadius: moderateScale(130),
-    backgroundColor: "#EAF4FE",
-    opacity: 0.9,
-  },
-  bgBlobRight: {
-    position: "absolute",
-    top: moderateScaleVertical(70),
-    right: -moderateScale(80),
-    width: moderateScale(200),
-    height: moderateScale(200),
-    borderRadius: moderateScale(100),
-    backgroundColor: "#EEF6FF",
-    opacity: 0.8,
-  },
-
-  // Branding Section
+  // Top Branding Section
   brandSection: {
     alignItems: "center",
     justifyContent: "center",
-    flex: 1,
     paddingHorizontal: moderateScale(20),
+    zIndex: 2,
   },
   logoImage: {
-    width: moderateScale(110),
-    height: moderateScale(110),
-    marginBottom: moderateScaleVertical(14),
+    width: moderateScale(78),
+    height: moderateScale(78),
+    marginBottom: moderateScaleVertical(8),
   },
   brandTitle: {
     fontFamily: fontFamily.bold,
-    fontSize: textScale(36),
+    fontSize: textScale(32),
     color: "#0F1E36",
     letterSpacing: -0.6,
   },
@@ -165,30 +175,52 @@ const styles = StyleSheet.create({
     color: colors.primaryBlue,
   },
   tagline: {
-    fontFamily: fontFamily.medium,
+    fontFamily: fontFamily.semiBold,
     fontSize: textScale(16),
-    color: "#475569",
-    marginTop: moderateScaleVertical(8),
+    color: "#334155",
+    marginTop: moderateScaleVertical(6),
     textAlign: "center",
   },
   taglineSub: {
     fontFamily: fontFamily.medium,
-    fontSize: textScale(16),
+    fontSize: textScale(15),
     color: "#475569",
     marginTop: moderateScaleVertical(2),
     textAlign: "center",
   },
 
-  // Bottom Patient Photo Section
-  patientSection: {
-    width: "100%",
-    height: "46%",
-    position: "relative",
-    justifyContent: "flex-end",
+  // Center breathing area
+  centerSpacer: {
+    flex: 1,
   },
-  patientImage: {
+
+  // Bottom Footer Section
+  bottomSection: {
+    alignItems: "center",
+    justifyContent: "center",
     width: "100%",
+    paddingHorizontal: moderateScale(24),
+    zIndex: 2,
+  },
+  progressBarTrack: {
+    width: moderateScale(76),
+    height: moderateScaleVertical(4),
+    borderRadius: moderateScale(2),
+    backgroundColor: "#BCE0F8",
+    overflow: "hidden",
+    marginBottom: moderateScaleVertical(14),
+  },
+  progressBarFill: {
     height: "100%",
+    backgroundColor: colors.primaryBlue,
+    borderRadius: moderateScale(2),
+  },
+  companionText: {
+    fontFamily: fontFamily.medium,
+    fontSize: textScale(12.5),
+    color: "#47617D",
+    textAlign: "center",
+    letterSpacing: 0.2,
   },
 });
 

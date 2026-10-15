@@ -170,10 +170,11 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ navigation }) => {
             { opacity: splashFade },
           ]}
         >
-          {/* Decorative Background Curved Shapes matching reference */}
-          <View style={styles.splashBgBlobTopLeft} />
-          <View style={styles.splashBgBlobRight} />
-
+          <Image
+            source={imagepath.splashFullSeamless}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
           <TouchableOpacity
             activeOpacity={1}
             onPress={dismissSplash}
@@ -182,7 +183,7 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ navigation }) => {
             <View
               style={[
                 styles.splashTopSection,
-                { paddingTop: insets.top + moderateScaleVertical(40) },
+                { paddingTop: insets.top + moderateScaleVertical(18) },
               ]}
             >
               <Image
@@ -197,12 +198,15 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ navigation }) => {
               <Text style={styles.splashTaglineSub}>Brighter Tomorrows</Text>
             </View>
 
-            <View style={styles.splashBottomSection}>
-              <Image
-                source={imagepath.splashPatient}
-                style={styles.splashPatientImage}
-                resizeMode="cover"
-              />
+            <View style={{ flex: 1 }} />
+
+            <View style={styles.splashFooter}>
+              <View style={styles.splashProgressBarTrack}>
+                <View style={styles.splashProgressBarFill} />
+              </View>
+              <Text style={styles.splashCompanionText}>
+                Your trusted dental care companion
+              </Text>
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -349,13 +353,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   splashLogo: {
-    width: moderateScale(110),
-    height: moderateScale(110),
-    marginBottom: moderateScaleVertical(14),
+    width: moderateScale(78),
+    height: moderateScale(78),
+    marginBottom: moderateScaleVertical(8),
   },
   splashBrandName: {
     fontFamily: fontFamily.bold,
-    fontSize: textScale(34),
+    fontSize: textScale(32),
     color: "#0F1E36",
     letterSpacing: -0.6,
   },
@@ -363,10 +367,10 @@ const styles = StyleSheet.create({
     color: colors.primaryBlue,
   },
   splashTagline: {
-    fontFamily: fontFamily.medium,
-    fontSize: textScale(15),
-    color: "#475569",
-    marginTop: moderateScaleVertical(8),
+    fontFamily: fontFamily.semiBold,
+    fontSize: textScale(16),
+    color: "#334155",
+    marginTop: moderateScaleVertical(6),
     textAlign: "center",
   },
   splashTaglineSub: {
@@ -376,15 +380,52 @@ const styles = StyleSheet.create({
     marginTop: moderateScaleVertical(2),
     textAlign: "center",
   },
-  splashBottomSection: {
+  splashToothCardWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
     width: "100%",
-    height: "46%",
-    position: "relative",
-    justifyContent: "flex-end",
+    paddingHorizontal: moderateScale(20),
   },
-  splashPatientImage: {
+  splashToothCard: {
+    width: moderateScale(300),
+    height: moderateScale(300),
+    borderRadius: moderateScale(28),
+    overflow: "hidden",
+    backgroundColor: "#E8F3FD",
+    shadowColor: colors.primaryBlue,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  splashToothImage: {
     width: "100%",
     height: "100%",
+  },
+  splashFooter: {
+    alignItems: "center",
+    paddingBottom: moderateScaleVertical(28),
+  },
+  splashProgressBarTrack: {
+    width: moderateScale(110),
+    height: moderateScaleVertical(4.5),
+    borderRadius: moderateScale(3),
+    backgroundColor: "#DBEAFE",
+    overflow: "hidden",
+    marginBottom: moderateScaleVertical(14),
+  },
+  splashProgressBarFill: {
+    width: "45%",
+    height: "100%",
+    backgroundColor: colors.primaryBlue,
+    borderRadius: moderateScale(3),
+  },
+  splashCompanionText: {
+    fontFamily: fontFamily.medium,
+    fontSize: textScale(12.5),
+    color: "#64748B",
+    textAlign: "center",
+    letterSpacing: 0.2,
   },
 
   // Onboarding Styles (Screen 2)

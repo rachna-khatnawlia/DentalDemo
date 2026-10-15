@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Modal } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { setIntroShown } from "../redux/slice/authSlice";
@@ -36,7 +36,6 @@ const Routes = () => {
   }, [isIntroShown, dispatch]);
 
   const [showSplash, setShowSplash] = useState(true);
-
   const hasSeenIntro = Boolean(isIntroShown || localIntroShown);
 
   return (
@@ -46,7 +45,14 @@ const Routes = () => {
           {accessToken ? MainStack(Stack) : AuthStack(Stack, hasSeenIntro)}
         </Stack.Navigator>
       </NavigationContainer>
-      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+      <Modal
+        visible={showSplash}
+        animationType="fade"
+        statusBarTranslucent
+        transparent={false}
+      >
+        <SplashScreen onFinish={() => setShowSplash(false)} />
+      </Modal>
     </View>
   );
 };
