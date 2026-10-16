@@ -33,8 +33,8 @@ const MAX_RESEND_ATTEMPTS = 3;
 const VerifyOtp = ({ navigation, route }: any) => {
   const dispatch = useDispatch();
   const flow = route?.params?.flow || "login";
-  const phoneNumber = route?.params?.phoneNumber || "+919876543210";
-  const displayPhone = route?.params?.displayPhone || phoneNumber;
+  const phoneNumber = route?.params?.phoneNumber || "+15550192834";
+  const displayPhone = route?.params?.displayPhone || "your mobile number";
   const fullName = route?.params?.fullName || "User";
   const initialCooldown = route?.params?.cooldownSeconds || 30;
 

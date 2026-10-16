@@ -190,7 +190,7 @@ const Profile = ({ navigation }: any) => {
           <Text style={styles.userEmail}>{profile.email}</Text>
 
           <View style={styles.phoneLocationRow}>
-            <Text style={styles.userPhone}>{profile.phone}</Text>
+            <Text style={styles.userPhone}>•••• •••• ••</Text>
             <Text style={styles.dotSeparator}>•</Text>
             <View style={styles.locationBadge}>
               <Ionicons

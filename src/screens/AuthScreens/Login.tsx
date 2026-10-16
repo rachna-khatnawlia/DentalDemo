@@ -62,7 +62,7 @@ const Login = ({ navigation }: any) => {
     setIsLoading(true);
     try {
       const res = await authService.verifyOtp({
-        phone: "+91 98765 43210",
+        phone: "+1 555 019 2834",
         otp: "1234",
         flow: "login",
       });
@@ -85,7 +85,7 @@ const Login = ({ navigation }: any) => {
       <View style={styles.formContainer}>
         <TextInputComp
           label="Mobile Number"
-          placeholder="e.g. 98765 43210"
+          placeholder="Enter mobile number"
           keyboardType="phone-pad"
           value={phoneNumber}
           onChangeText={handlePhoneChange}

@@ -42,7 +42,7 @@ const Dashboard = ({ navigation }: any) => {
   const [selectedCategory, setSelectedCategory] = useState("1");
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [upcomingAppointment, setUpcomingAppointment] = useState<Appointment | null>(null);
-  const [patientName, setPatientName] = useState(reduxUser?.name || "Rachna");
+  const [patientName, setPatientName] = useState(reduxUser?.name || "Patient");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   // UI State
@@ -182,7 +182,7 @@ const Dashboard = ({ navigation }: any) => {
       >
         {/* User Greeting */}
         <View style={styles.greetingSection}>
-          <Text style={styles.greetingTitle}>Hello, {patientName}👋</Text>
+          <Text style={styles.greetingTitle}>Welcome Back 👋</Text>
           <Text style={styles.greetingSubtitle}>
             How can we help you today?
           </Text>

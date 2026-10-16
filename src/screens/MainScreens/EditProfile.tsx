@@ -44,10 +44,10 @@ const EditProfile: React.FC<EditProfileProps> = ({ navigation }) => {
   const dispatch = useDispatch();
 
   // Personal Info State
-  const [firstName, setFirstName] = useState("Rachna");
-  const [lastName, setLastName] = useState("Khatnawlia");
-  const [mobileNumber, setMobileNumber] = useState("9876543210");
-  const [email, setEmail] = useState("rachna@example.com");
+  const [firstName, setFirstName] = useState("Patient");
+  const [lastName, setLastName] = useState("User");
+  const [mobileNumber, setMobileNumber] = useState("5550192834");
+  const [email, setEmail] = useState("patient@dentacare.com");
   const [gender, setGender] = useState<GenderType>("Female");
   const [dob, setDob] = useState("15 Aug 1995");
   const [bloodGroup, setBloodGroup] = useState("O+");

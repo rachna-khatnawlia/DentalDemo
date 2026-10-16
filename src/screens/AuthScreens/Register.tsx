@@ -88,7 +88,7 @@ const Register = ({ navigation }: any) => {
           <View style={styles.formContainer}>
             <TextInputComp
               label="Full Name"
-              placeholder="e.g. Rachna Sharma"
+              placeholder="Enter full name"
               value={fullName}
               onChangeText={(text: string) => setFullName(text)}
               autoCapitalize="words"
@@ -96,7 +96,7 @@ const Register = ({ navigation }: any) => {
 
             <TextInputComp
               label="Mobile Number"
-              placeholder="e.g. 98765 43210"
+              placeholder="Enter mobile number"
               keyboardType="phone-pad"
               value={phoneNumber}
               onChangeText={(text: string) => setPhoneNumber(text)}

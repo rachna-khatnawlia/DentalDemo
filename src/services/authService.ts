@@ -67,7 +67,7 @@ export const authService = {
 
     const mockUser: User = {
       id: "usr_pat_01",
-      name: params.fullName || "Rachna",
+      name: params.fullName || "Patient",
       phone: params.phone,
       role: "PATIENT",
       patientId: "pat_001",
@@ -124,8 +124,8 @@ export const authService = {
     // Fallback user if token exists in storage
     return {
       id: "usr_pat_01",
-      name: "Rachna",
-      phone: "+91 98765 43210",
+      name: "Patient",
+      phone: "+1 (555) 019-2834",
       role: "PATIENT",
       patientId: "pat_001",
       isActive: true,
