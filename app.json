@@ -12,8 +12,9 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0066F6",
-        "foregroundImage": "./assets/android-icon-foreground.png"
+        "backgroundColor": "#F5F8FD",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.dentalDemo"
@@ -31,7 +32,8 @@
           "imageWidth": 200,
           "resizeMode": "contain"
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }

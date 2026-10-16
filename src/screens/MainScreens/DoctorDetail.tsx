@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Dimensions,
   Share,
+  ActivityIndicator,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,48 +22,50 @@ import {
   moderateScaleVertical,
   textScale,
 } from "../../styles/responsiveSize";
-
-const { width } = Dimensions.get("window");
-
-const SERVICES_LIST = [
-  { id: "1", name: "Braces Treatment", icon: "tooth-outline", price: "$1,200" },
-  { id: "2", name: "Clear Aligners (Invisalign)", icon: "tooth-outline", price: "$2,400" },
-  { id: "3", name: "Teeth Cleaning", icon: "tooth-outline", price: "$120" },
-  { id: "4", name: "Smile Correction", icon: "emoticon-happy-outline", price: "$850" },
-];
-
-
-const REVIEWS_LIST = [
-  {
-    id: "r1",
-    author: "Ananya Iyer",
-    rating: 5,
-    date: "2 days ago",
-    comment: "Dr. Rohan was extremely gentle during my aligner fitting. Highly recommend him for smile corrections!",
-  },
-  {
-    id: "r2",
-    author: "Karan Singhania",
-    rating: 5,
-    date: "1 week ago",
-    comment: "State of the art clinic and wonderful staff. My braces treatment has shown great results.",
-  },
-];
+import doctorService from "../../services/doctorService";
+import { Doctor, DoctorService, DoctorReview } from "../../types/models";
+import { MOCK_DOCTOR_REVIEWS, MOCK_DOCTOR_SERVICES } from "../../services/mockData";
 
 const DoctorDetail = ({ navigation, route }: any) => {
   const insets = useSafeAreaInsets();
-  const doctor = route?.params?.doctor || {
+  const doctor: Doctor = route?.params?.doctor || {
+    id: "doc_01",
     name: "Dr. Rohan Mehta",
     degree: "BDS, MDS - Orthodontist",
+    specialty: "Orthodontics",
     rating: "4.8",
     reviewsCount: "320",
     location: "SmileCare Dental Clinic, New Delhi",
     image: imagepath.dentistRohan,
+    experienceYears: 8,
   };
 
   const [activeTab, setActiveTab] = useState<"about" | "services" | "reviews">("about");
   const [isFavorite, setIsFavorite] = useState(false);
   const [isBioExpanded, setIsBioExpanded] = useState(false);
+  const [services, setServices] = useState<DoctorService[]>(MOCK_DOCTOR_SERVICES);
+  const [reviews, setReviews] = useState<DoctorReview[]>(MOCK_DOCTOR_REVIEWS);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+
+  useEffect(() => {
+    const loadDoctorMeta = async () => {
+      setIsLoadingDetails(true);
+      try {
+        const [srvList, revList] = await Promise.all([
+          doctorService.getDoctorServices(doctor.id),
+          doctorService.getDoctorReviews(doctor.id),
+        ]);
+        setServices(srvList);
+        setReviews(revList);
+      } catch (e) {
+        console.warn("[DoctorDetail] Failed to load doctor meta", e);
+      } finally {
+        setIsLoadingDetails(false);
+      }
+    };
+
+    loadDoctorMeta();
+  }, [doctor.id]);
 
   const handleShare = async () => {
     try {
@@ -77,7 +80,7 @@ const DoctorDetail = ({ navigation, route }: any) => {
   const handleBookNow = (serviceName?: string) => {
     navigation.navigate(NavigationStrings.BOOK_APPOINTMENT, {
       doctor,
-      selectedService: serviceName || "Teeth Cleaning",
+      selectedService: serviceName || services[0]?.name || "Teeth Cleaning",
     });
   };
 
@@ -140,7 +143,7 @@ const DoctorDetail = ({ navigation, route }: any) => {
           {/* Photos Count Badge */}
           <View style={styles.photosBadge}>
             <Ionicons name="camera-outline" size={moderateScale(13)} color={colors.white} />
-            <Text style={styles.photosText}>Photos</Text>
+            <Text style={styles.photosText}>Verified Specialist</Text>
           </View>
         </View>
 
@@ -191,7 +194,7 @@ const DoctorDetail = ({ navigation, route }: any) => {
                   activeTab === "services" ? styles.tabTextActive : styles.tabTextInactive,
                 ]}
               >
-                Services
+                Services ({services.length})
               </Text>
             </TouchableOpacity>
 
@@ -206,7 +209,7 @@ const DoctorDetail = ({ navigation, route }: any) => {
                   activeTab === "reviews" ? styles.tabTextActive : styles.tabTextInactive,
                 ]}
               >
-                Reviews
+                Reviews ({reviews.length})
               </Text>
             </TouchableOpacity>
           </View>
@@ -215,9 +218,8 @@ const DoctorDetail = ({ navigation, route }: any) => {
           {activeTab === "about" && (
             <View style={styles.tabContentSection}>
               <Text style={styles.bioText}>
-                {doctor.name} is a highly experienced orthodontist with over 8 years of experience
-                in braces, aligners and smile correction treatments. Having treated over 2,500+
-                patients with cutting edge 3D intraoral scanners and digital precision dentistry.
+                {doctor.about ||
+                  `${doctor.name} is a highly experienced orthodontist with over 8 years of experience in braces, aligners and smile correction treatments. Having treated over 2,500+ patients with cutting edge 3D intraoral scanners and digital precision dentistry.`}
                 {!isBioExpanded && "..."}
               </Text>
               <TouchableOpacity
@@ -233,24 +235,24 @@ const DoctorDetail = ({ navigation, route }: any) => {
               {/* Clinic Highlights */}
               <View style={styles.highlightsRow}>
                 <View style={styles.highlightItem}>
-                  <Text style={styles.highlightNumber}>8+ Yrs</Text>
+                  <Text style={styles.highlightNumber}>{doctor.experienceYears || 8}+ Yrs</Text>
                   <Text style={styles.highlightLabel}>Experience</Text>
                 </View>
                 <View style={styles.highlightDivider} />
                 <View style={styles.highlightItem}>
-                  <Text style={styles.highlightNumber}>2,500+</Text>
+                  <Text style={styles.highlightNumber}>{doctor.patientsCount || "2,500+"}</Text>
                   <Text style={styles.highlightLabel}>Smiles</Text>
                 </View>
                 <View style={styles.highlightDivider} />
                 <View style={styles.highlightItem}>
-                  <Text style={styles.highlightNumber}>4.8 ★</Text>
+                  <Text style={styles.highlightNumber}>{doctor.rating} ★</Text>
                   <Text style={styles.highlightLabel}>Satisfaction</Text>
                 </View>
               </View>
 
               {/* Services Offered Preview */}
               <Text style={styles.sectionHeading}>Services Offered</Text>
-              {SERVICES_LIST.map((srv) => (
+              {services.slice(0, 3).map((srv) => (
                 <TouchableOpacity
                   key={srv.id}
                   activeOpacity={0.7}
@@ -260,12 +262,15 @@ const DoctorDetail = ({ navigation, route }: any) => {
                   <View style={styles.serviceLeft}>
                     <View style={styles.serviceIconContainer}>
                       <MaterialCommunityIcons
-                        name={srv.icon as any}
+                        name={(srv.icon as any) || "tooth-outline"}
                         size={moderateScale(18)}
                         color={colors.primaryBlue}
                       />
                     </View>
-                    <Text style={styles.serviceName}>{srv.name}</Text>
+                    <View>
+                      <Text style={styles.serviceName}>{srv.name}</Text>
+                      <Text style={styles.servicePrice}>{srv.price}</Text>
+                    </View>
                   </View>
                   <Ionicons
                     name="chevron-forward"
@@ -281,7 +286,7 @@ const DoctorDetail = ({ navigation, route }: any) => {
           {activeTab === "services" && (
             <View style={styles.tabContentSection}>
               <Text style={styles.sectionHeading}>All Treatment Services</Text>
-              {SERVICES_LIST.map((srv) => (
+              {services.map((srv) => (
                 <TouchableOpacity
                   key={srv.id}
                   activeOpacity={0.7}
@@ -291,7 +296,7 @@ const DoctorDetail = ({ navigation, route }: any) => {
                   <View style={styles.serviceFullHeader}>
                     <View style={styles.serviceIconContainer}>
                       <MaterialCommunityIcons
-                        name={srv.icon as any}
+                        name={(srv.icon as any) || "tooth-outline"}
                         size={moderateScale(20)}
                         color={colors.primaryBlue}
                       />
@@ -312,8 +317,8 @@ const DoctorDetail = ({ navigation, route }: any) => {
           {/* Tab Content: Reviews */}
           {activeTab === "reviews" && (
             <View style={styles.tabContentSection}>
-              <Text style={styles.sectionHeading}>Patient Feedback ({doctor.reviewsCount})</Text>
-              {REVIEWS_LIST.map((rev) => (
+              <Text style={styles.sectionHeading}>Patient Feedback ({reviews.length})</Text>
+              {reviews.map((rev) => (
                 <View key={rev.id} style={styles.reviewCard}>
                   <View style={styles.reviewHeader}>
                     <Text style={styles.reviewAuthor}>{rev.author}</Text>
@@ -478,7 +483,7 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     paddingVertical: moderateScaleVertical(12),
-    marginRight: moderateScale(28),
+    marginRight: moderateScale(24),
     borderBottomWidth: 2.5,
     borderBottomColor: "transparent",
   },
@@ -577,7 +582,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   servicePrice: {
-    fontFamily: fontFamily.regular,
+    fontFamily: fontFamily.bold,
     fontSize: textScale(12),
     color: colors.primaryBlue,
     marginTop: 2,

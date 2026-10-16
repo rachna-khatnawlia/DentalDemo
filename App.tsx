@@ -10,6 +10,8 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import useCachedResources from "./src/Utils/useCachedResources";
+import Toast from "react-native-toast-message";
+import toastConfig from "./src/components/ToastConfig";
 
 // create a component
 const App = () => {
@@ -24,7 +26,10 @@ const App = () => {
       <Provider store={store}>
         <PersistGate loading={null} persistor={persistor}>
           <StatusBar style="auto" />
-          <AppLoader />
+          <View style={styles.container}>
+            <AppLoader />
+            <Toast config={toastConfig} />
+          </View>
         </PersistGate>
       </Provider>
     </SafeAreaProvider>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,8 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import { useDispatch } from "react-redux";
+import { setUser } from "../../redux/slice/authSlice";
 import colors from "../../constants/colors";
 import fontFamily from "../../constants/fontFamily";
 import imagepath from "../../constants/imagepath";
@@ -27,6 +29,9 @@ import {
   moderateScaleVertical,
   textScale,
 } from "../../styles/responsiveSize";
+import ValidationSchema from "../../schemas/validation";
+import patientService from "../../services/patientService";
+import ToastService from "../../services/toastService";
 
 interface EditProfileProps {
   navigation: any;
@@ -36,6 +41,7 @@ type GenderType = "Female" | "Male" | "Other";
 
 const EditProfile: React.FC<EditProfileProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const dispatch = useDispatch();
 
   // Personal Info State
   const [firstName, setFirstName] = useState("Rachna");
@@ -60,6 +66,29 @@ const EditProfile: React.FC<EditProfileProps> = ({ navigation }) => {
   const [previewDocSide, setPreviewDocSide] = useState<"front" | "back" | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Load current profile on mount
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const p = await patientService.getProfile();
+        if (p) {
+          if (p.firstName) setFirstName(p.firstName);
+          if (p.lastName) setLastName(p.lastName);
+          if (p.phone) setMobileNumber(p.phone.replace(/[^0-9]/g, "").slice(-10));
+          if (p.email) setEmail(p.email);
+          if (p.gender) setGender(p.gender);
+          if (p.dob) setDob(p.dob);
+          if (p.bloodGroup) setBloodGroup(p.bloodGroup);
+          if (p.aadhaarNumber) setAadhaarNumber(p.aadhaarNumber);
+          setIsAadhaarVerified(Boolean(p.isAadhaarVerified));
+        }
+      } catch (e) {
+        console.warn("[EditProfile] Failed to load profile", e);
+      }
+    };
+    loadProfile();
+  }, []);
+
   // Format Aadhaar Input (auto spaces every 4 digits)
   const handleAadhaarChange = (text: string) => {
     const cleaned = text.replace(/[^0-9]/g, "").slice(0, 12);
@@ -77,39 +106,80 @@ const EditProfile: React.FC<EditProfileProps> = ({ navigation }) => {
   };
 
   // Handle Save
-  const handleSave = () => {
-    if (!firstName.trim()) {
-      Alert.alert("Validation Error", "Please enter your first name.");
+  const handleSave = async () => {
+    // Validate First and Last Name
+    const firstNameVal = ValidationSchema.validateFullName(firstName);
+    if (!firstNameVal.isValid) {
+      ToastService.warning("Please enter a valid first name.", "Validation Error");
       return;
     }
-    if (!lastName.trim()) {
-      Alert.alert("Validation Error", "Please enter your last name.");
+    const lastNameVal = ValidationSchema.validateFullName(lastName);
+    if (!lastNameVal.isValid) {
+      ToastService.warning("Please enter a valid last name.", "Validation Error");
       return;
     }
-    if (mobileNumber.length < 10) {
-      Alert.alert("Validation Error", "Please enter a valid 10-digit mobile number.");
+
+    // Validate Phone
+    const phoneVal = ValidationSchema.validatePhone(mobileNumber);
+    if (!phoneVal.isValid) {
+      ToastService.warning(phoneVal.error || "Please enter a valid 10-digit mobile number.", "Validation Error");
       return;
     }
-    const cleanAadhaar = aadhaarNumber.replace(/\s/g, "");
-    if (cleanAadhaar.length > 0 && cleanAadhaar.length < 12) {
-      Alert.alert("Validation Error", "Please enter a valid 12-digit Aadhaar number.");
+
+    // Validate Email
+    const emailVal = ValidationSchema.validateEmail(email, false);
+    if (!emailVal.isValid) {
+      ToastService.warning(emailVal.error || "Please enter a valid email address.", "Validation Error");
+      return;
+    }
+
+    // Validate Aadhaar
+    const aadhaarVal = ValidationSchema.validateAadhaar(aadhaarNumber, false);
+    if (!aadhaarVal.isValid) {
+      ToastService.warning(aadhaarVal.error || "Please enter a valid 12-digit Aadhaar number.", "Validation Error");
       return;
     }
 
     setIsSaving(true);
-    setTimeout(() => {
+
+    try {
+      const updated = await patientService.updateProfile({
+        firstName: firstNameVal.cleanValue!,
+        lastName: lastNameVal.cleanValue!,
+        email: emailVal.cleanValue,
+        phone: phoneVal.cleanValue!,
+        gender,
+        dob,
+        bloodGroup,
+        aadhaarNumber: aadhaarVal.cleanValue || undefined,
+      });
+
       setIsSaving(false);
-      Alert.alert(
-        "Profile Updated 🎉",
-        "Your personal information and Aadhaar document details have been saved successfully.",
-        [
-          {
-            text: "Done",
-            onPress: () => navigation.goBack(),
-          },
-        ]
+
+      // Update Redux user if active
+      dispatch(
+        setUser({
+          id: updated.userId || "usr_001",
+          name: `${updated.firstName} ${updated.lastName}`.trim(),
+          phone: updated.phone,
+          email: updated.email,
+          role: "PATIENT",
+          patientId: updated.id,
+          isActive: true,
+        })
       );
-    }, 900);
+
+      ToastService.success(
+        "Your profile details have been saved successfully.",
+        "Profile Updated 🎉"
+      );
+      setTimeout(() => {
+        navigation.goBack();
+      }, 800);
+    } catch (e: any) {
+      setIsSaving(false);
+      ToastService.error(e?.message || "Failed to update profile. Please try again.", "Update Error");
+    }
   };
 
   // Document Upload Handlers
@@ -129,9 +199,9 @@ const EditProfile: React.FC<EditProfileProps> = ({ navigation }) => {
       setBackDocName(mockFilename);
     }
 
-    Alert.alert(
-      "Document Uploaded",
-      `Aadhaar ${side === "front" ? "Front Side" : "Back Side"} (${source === "camera" ? "Camera" : "Gallery"}) has been uploaded.`
+    ToastService.success(
+      `Aadhaar ${side === "front" ? "Front Side" : "Back Side"} (${source === "camera" ? "Camera" : "Gallery"}) uploaded.`,
+      "Document Uploaded"
     );
   };
 
@@ -152,6 +222,10 @@ const EditProfile: React.FC<EditProfileProps> = ({ navigation }) => {
               setHasBackDoc(false);
               setBackDocName("");
             }
+            ToastService.info(
+              `Aadhaar ${side === "front" ? "Front" : "Back"} side removed.`,
+              "Document Removed"
+            );
           },
         },
       ]
@@ -413,9 +487,9 @@ const EditProfile: React.FC<EditProfileProps> = ({ navigation }) => {
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() =>
-                    Alert.alert(
-                      "Date of Birth",
-                      "Select your birth date for medical prescription records."
+                    ToastService.info(
+                      "Select your birth date for medical prescription records.",
+                      "Date of Birth"
                     )
                   }
                   style={styles.inputContainer}

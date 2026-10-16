@@ -1,5 +1,5 @@
 export default {
-  logo: require("../assets/images/dentacare_logo.jpg"),
+  logo: require("../assets/images/dentacare_logo.png"),
   introTooth: require("../assets/images/tooth_character.jpg"),
   implantIcon: require("../assets/images/implant_icon.jpg"),
   dentistRohan: require("../assets/images/dentist_rohan.jpg"),

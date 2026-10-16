@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 import AuthWrapperContainer from "../../components/AuthWrapperContainer";
 import TextInputComp from "../../components/TextInputComp";
@@ -20,18 +21,51 @@ import {
   textScale,
 } from "../../styles/responsiveSize";
 import NavigationStrings from "../../navigation/NavigationStrings";
+import ValidationSchema from "../../schemas/validation";
+import authService from "../../services/authService";
+import ToastService from "../../services/toastService";
 
 const Register = ({ navigation }: any) => {
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleRegister = () => {
-    // Navigate to OTP verification passing mobile registration context
-    navigation.navigate(NavigationStrings.VERIFY_OTP, {
-      flow: "register",
-      phoneNumber: phoneNumber.trim() || "+1 (555) 000-0000",
-      fullName: fullName.trim() || "User",
-    });
+  const handleRegister = async () => {
+    // Validate Full Name
+    const nameVal = ValidationSchema.validateFullName(fullName);
+    if (!nameVal.isValid) {
+      const err = nameVal.error || "Please enter your full name.";
+      ToastService.error(err, "Name Required");
+      return;
+    }
+
+    // Validate Phone Number
+    const phoneVal = ValidationSchema.validatePhone(phoneNumber);
+    if (!phoneVal.isValid) {
+      const err = phoneVal.error || "Please enter your mobile number.";
+      ToastService.error(err, "Mobile Number Required");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await authService.sendOtp(phoneVal.cleanValue!);
+      setIsLoading(false);
+      ToastService.success("OTP sent successfully to your mobile number.", "Code Sent");
+
+      navigation.navigate(NavigationStrings.VERIFY_OTP, {
+        flow: "register",
+        phoneNumber: phoneVal.cleanValue!,
+        displayPhone: phoneNumber.trim(),
+        fullName: nameVal.cleanValue!,
+        cooldownSeconds: response.cooldownSeconds || 30,
+      });
+    } catch (error: any) {
+      setIsLoading(false);
+      const msg = error?.message || "Failed to initiate registration. Please try again.";
+      ToastService.error(msg, "Registration Error");
+    }
   };
 
   return (
@@ -54,22 +88,25 @@ const Register = ({ navigation }: any) => {
           <View style={styles.formContainer}>
             <TextInputComp
               label="Full Name"
-              placeholder="e.g.  Sharma"
+              placeholder="e.g. Rachna Sharma"
               value={fullName}
-              onChangeText={setFullName}
+              onChangeText={(text: string) => setFullName(text)}
+              autoCapitalize="words"
             />
 
             <TextInputComp
               label="Mobile Number"
-              placeholder="Enter Mobile Number"
+              placeholder="e.g. 98765 43210"
               keyboardType="phone-pad"
               value={phoneNumber}
-              onChangeText={setPhoneNumber}
+              onChangeText={(text: string) => setPhoneNumber(text)}
+              maxLength={14}
             />
 
             <ButtonComp
-              title="Get OTP"
+              title={isLoading ? "Sending OTP..." : "Get OTP"}
               onPress={handleRegister}
+              disabled={isLoading}
               style={styles.submitBtn}
             />
 

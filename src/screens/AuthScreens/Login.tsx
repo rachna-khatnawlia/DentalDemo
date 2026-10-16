@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import AuthWrapperContainer from "../../components/AuthWrapperContainer";
 import TextInputComp from "../../components/TextInputComp";
 import {
@@ -12,45 +12,91 @@ import AuthHeader from "../../components/AuthHeader";
 import colors from "../../constants/colors";
 import fontFamily from "../../constants/fontFamily";
 import NavigationStrings from "../../navigation/NavigationStrings";
-
+import ValidationSchema from "../../schemas/validation";
+import authService from "../../services/authService";
 import { useDispatch } from "react-redux";
-import { onLogin } from "../../redux/slice/authSlice";
+import { onLogin, setUser } from "../../redux/slice/authSlice";
+import ToastService from "../../services/toastService";
 
-// create a component
 const Login = ({ navigation }: any) => {
   const dispatch = useDispatch();
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleGetOtp = () => {
-    navigation.navigate(NavigationStrings.VERIFY_OTP, {
-      flow: "login",
-      phoneNumber: phoneNumber.trim() || "+1 (555) 000-0000",
-    });
+  const handlePhoneChange = (text: string) => {
+    setPhoneNumber(text);
   };
 
-  const handleQuickDemo = () => {
-    dispatch(onLogin("demo-access-token-123"));
+  const handleGetOtp = async () => {
+    const validation = ValidationSchema.validatePhone(phoneNumber);
+    if (!validation.isValid) {
+      ToastService.error(
+        validation.error || "Please enter your mobile number.",
+        "Mobile Number Required"
+      );
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await authService.sendOtp(validation.cleanValue!);
+      setIsLoading(false);
+      ToastService.success("Verification code sent to your mobile.", "OTP Sent");
+
+      navigation.navigate(NavigationStrings.VERIFY_OTP, {
+        flow: "login",
+        phoneNumber: validation.cleanValue!,
+        displayPhone: phoneNumber.trim(),
+        cooldownSeconds: response.cooldownSeconds || 30,
+      });
+    } catch (error: any) {
+      setIsLoading(false);
+      const msg =
+        error?.message || "Failed to send verification code. Please try again.";
+      ToastService.error(msg, "Unable to Send OTP");
+    }
+  };
+
+  const handleQuickDemo = async () => {
+    setIsLoading(true);
+    try {
+      const res = await authService.verifyOtp({
+        phone: "+91 98765 43210",
+        otp: "1234",
+        flow: "login",
+      });
+      ToastService.success("Logged in with Demo Account", "Welcome to DentaCare");
+      dispatch(onLogin(res.token));
+      if (res.user) {
+        dispatch(setUser(res.user));
+      }
+    } catch (e: any) {
+      ToastService.info("Signed in via offline demo session", "Demo Mode");
+      dispatch(onLogin("demo-access-token-123"));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <AuthWrapperContainer>
-      <AuthHeader
-        title="DentaCare"
-        des="Healthy Smiles, Brighter Tomorrows"
-      />
+      <AuthHeader title="DentaCare" des="Healthy Smiles, Brighter Tomorrows" />
       <View style={styles.formContainer}>
         <TextInputComp
           label="Mobile Number"
-          placeholder="Enter Mobile Number"
+          placeholder="e.g. 98765 43210"
           keyboardType="phone-pad"
           value={phoneNumber}
-          onChangeText={setPhoneNumber}
+          onChangeText={handlePhoneChange}
+          maxLength={14}
         />
 
-        {/* Primary Get OTP Button */}
+        {/* Primary Get OTP Button with Loading State */}
         <ButtonComp
-          title="Get OTP"
+          title={isLoading ? "Sending OTP..." : "Get OTP"}
           onPress={handleGetOtp}
+          disabled={isLoading}
           style={styles.getOtpBtn}
         />
 
@@ -58,6 +104,7 @@ const Login = ({ navigation }: any) => {
         <ButtonComp
           title="⚡ Quick Demo Access"
           onPress={handleQuickDemo}
+          disabled={isLoading}
           style={styles.demoBtn}
           textStyle={{ color: colors.primaryBlue }}
         />
@@ -77,7 +124,6 @@ const Login = ({ navigation }: any) => {
   );
 };
 
-// define your styles
 const styles = StyleSheet.create({
   formContainer: {
     paddingHorizontal: moderateScale(24),
@@ -112,6 +158,5 @@ const styles = StyleSheet.create({
     color: colors.primaryBlue,
   },
 });
-
 
 export default Login;

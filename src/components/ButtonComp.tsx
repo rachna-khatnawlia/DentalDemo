@@ -1,6 +1,5 @@
-//import liraries
-import React, { Component } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import React from "react";
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
 import { moderateScale, moderateScaleVertical, textScale } from "../styles/responsiveSize";
 import colors from "../constants/colors";
 import fontFamily from "../constants/fontFamily";
@@ -10,27 +9,38 @@ interface ButtonCompProps {
   onPress?: () => void;
   style?: any;
   textStyle?: any;
+  disabled?: boolean;
+  isLoading?: boolean;
 }
 
-// create a component
 const ButtonComp: React.FC<ButtonCompProps> = ({
   title = "",
   onPress,
   style,
   textStyle,
+  disabled = false,
+  isLoading = false,
 }) => {
   return (
     <TouchableOpacity
       activeOpacity={0.8}
       onPress={onPress}
-      style={[styles.container, style]}
+      disabled={disabled || isLoading}
+      style={[
+        styles.container,
+        (disabled || isLoading) && styles.disabledContainer,
+        style,
+      ]}
     >
-      <Text style={[styles.text, textStyle]}>{title}</Text>
+      {isLoading ? (
+        <ActivityIndicator size="small" color={colors.white} />
+      ) : (
+        <Text style={[styles.text, textStyle]}>{title}</Text>
+      )}
     </TouchableOpacity>
   );
 };
 
-// define your styles
 const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.primaryBlue,
@@ -45,6 +55,9 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 4,
   },
+  disabledContainer: {
+    opacity: 0.65,
+  },
   text: {
     color: colors.white,
     fontFamily: fontFamily.semiBold,
@@ -53,6 +66,4 @@ const styles = StyleSheet.create({
   },
 });
 
-//make this component available to the app
 export default ButtonComp;
-

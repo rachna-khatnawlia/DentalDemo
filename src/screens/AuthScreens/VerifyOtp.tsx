@@ -9,9 +9,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useDispatch } from "react-redux";
-import { onLogin } from "../../redux/slice/authSlice";
+import { onLogin, setUser } from "../../redux/slice/authSlice";
 import AuthWrapperContainer from "../../components/AuthWrapperContainer";
 import ButtonComp from "../../components/ButtonComp";
 import AuthHeader from "../../components/AuthHeader";
@@ -22,19 +23,27 @@ import {
   moderateScaleVertical,
   textScale,
 } from "../../styles/responsiveSize";
-import NavigationStrings from "../../navigation/NavigationStrings";
+import ValidationSchema from "../../schemas/validation";
+import authService from "../../services/authService";
+import ToastService from "../../services/toastService";
 
 const OTP_LENGTH = 4;
+const MAX_RESEND_ATTEMPTS = 3;
 
 const VerifyOtp = ({ navigation, route }: any) => {
   const dispatch = useDispatch();
-  const flow = route?.params?.flow || "register";
-  const phoneNumber = route?.params?.phoneNumber || "your mobile number";
+  const flow = route?.params?.flow || "login";
+  const phoneNumber = route?.params?.phoneNumber || "+919876543210";
+  const displayPhone = route?.params?.displayPhone || phoneNumber;
+  const fullName = route?.params?.fullName || "User";
+  const initialCooldown = route?.params?.cooldownSeconds || 30;
 
   const [otp, setOtp] = useState(["", "", "", ""]);
-  const [timer, setTimer] = useState(30);
+  const [timer, setTimer] = useState(initialCooldown);
   const [canResend, setCanResend] = useState(false);
+  const [resendCount, setResendCount] = useState(0);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
@@ -43,15 +52,18 @@ const VerifyOtp = ({ navigation, route }: any) => {
     let interval: ReturnType<typeof setInterval>;
     if (timer > 0) {
       interval = setInterval(() => {
-        setTimer((prev) => prev - 1);
+        setTimer((prev: number) => prev - 1);
       }, 1000);
     } else {
-      setCanResend(true);
+      if (resendCount < MAX_RESEND_ATTEMPTS) {
+        setCanResend(true);
+      }
     }
     return () => clearInterval(interval);
-  }, [timer]);
+  }, [timer, resendCount]);
 
   const handleOtpChange = (text: string, index: number) => {
+    if (errorMessage) setErrorMessage(null);
     const cleanText = text.replace(/[^0-9]/g, "");
     const newOtp = [...otp];
     newOtp[index] = cleanText.slice(-1);
@@ -60,6 +72,14 @@ const VerifyOtp = ({ navigation, route }: any) => {
     // Auto-focus next input box if a digit is entered
     if (cleanText && index < OTP_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-submit if all 4 digits are entered
+    if (cleanText && index === OTP_LENGTH - 1) {
+      const fullCode = newOtp.join("");
+      if (fullCode.length === OTP_LENGTH) {
+        executeVerification(fullCode);
+      }
     }
   };
 
@@ -70,28 +90,70 @@ const VerifyOtp = ({ navigation, route }: any) => {
     }
   };
 
-  const handleResend = () => {
-    if (!canResend) return;
-    setOtp(["", "", "", ""]);
-    setTimer(30);
-    setCanResend(false);
-    inputRefs.current[0]?.focus();
-    Alert.alert("OTP Resent", `A new 4-digit OTP has been sent to ${phoneNumber}.`);
+  const handleResend = async () => {
+    if (!canResend || resendCount >= MAX_RESEND_ATTEMPTS) return;
+
+    try {
+      setOtp(["", "", "", ""]);
+      setTimer(30);
+      setCanResend(false);
+      setResendCount((prev) => prev + 1);
+      setErrorMessage(null);
+      inputRefs.current[0]?.focus();
+
+      await authService.resendOtp(phoneNumber);
+      ToastService.success(
+        `A new 4-digit verification code has been sent to ${displayPhone}.`,
+        "OTP Sent"
+      );
+    } catch (e: any) {
+      const msg = e?.message || "Failed to resend code. Please try again.";
+      setErrorMessage(msg);
+      ToastService.error(msg, "Resend Error");
+    }
   };
 
-  const handleVerify = () => {
-    const enteredOtp = otp.join("");
-    if (enteredOtp.length < OTP_LENGTH) {
-      Alert.alert("Invalid OTP", "Please enter the complete 4-digit verification code.");
+  const executeVerification = async (enteredOtp: string) => {
+    const validation = ValidationSchema.validateOtp(enteredOtp);
+    if (!validation.isValid) {
+      const err = validation.error || "Please enter the complete 4-digit code.";
+      setErrorMessage(err);
+      ToastService.warning(err, "Invalid Code");
       return;
     }
 
+    setErrorMessage(null);
     setIsVerifying(true);
 
-    setTimeout(() => {
+    try {
+      const response = await authService.verifyOtp({
+        phone: phoneNumber,
+        otp: validation.cleanValue!,
+        flow,
+        fullName,
+      });
+
       setIsVerifying(false);
-      dispatch(onLogin("demo-mobile-user-token"));
-    }, 500);
+      ToastService.success("Mobile verification successful!", "Verified");
+
+      // Successfully verified
+      if (response.user) {
+        dispatch(setUser(response.user));
+      }
+      dispatch(onLogin(response.token));
+    } catch (error: any) {
+      setIsVerifying(false);
+      const msg = error?.message || "Invalid or expired OTP. Please try again.";
+      setErrorMessage(msg);
+      ToastService.error(msg, "Verification Failed");
+      // Reset OTP inputs on error
+      setOtp(["", "", "", ""]);
+      inputRefs.current[0]?.focus();
+    }
+  };
+
+  const handleManualVerify = () => {
+    executeVerification(otp.join(""));
   };
 
   const formattedTimer = timer < 10 ? `00:0${timer}` : `00:${timer}`;
@@ -108,7 +170,7 @@ const VerifyOtp = ({ navigation, route }: any) => {
         >
           <AuthHeader
             title="Verify Mobile OTP"
-            des={`We sent a 4-digit code to\n${phoneNumber}`}
+            des={`We sent a 4-digit code to\n${displayPhone}`}
             showBack={true}
             onBack={() => navigation.goBack()}
           />
@@ -130,7 +192,12 @@ const VerifyOtp = ({ navigation, route }: any) => {
                     keyboardType="number-pad"
                     maxLength={1}
                     selectTextOnFocus
-                    style={[styles.otpBox, isFilled && styles.otpBoxFilled]}
+                    editable={!isVerifying}
+                    style={[
+                      styles.otpBox,
+                      isFilled && styles.otpBoxFilled,
+                      Boolean(errorMessage) && styles.otpBoxError,
+                    ]}
                   />
                 );
               })}
@@ -142,6 +209,10 @@ const VerifyOtp = ({ navigation, route }: any) => {
                 <TouchableOpacity onPress={handleResend} activeOpacity={0.7}>
                   <Text style={styles.resendActiveText}>Resend OTP</Text>
                 </TouchableOpacity>
+              ) : resendCount >= MAX_RESEND_ATTEMPTS ? (
+                <Text style={styles.resendMaxText}>
+                  Maximum OTP resend attempts reached. Please try again later.
+                </Text>
               ) : (
                 <Text style={styles.resendTimerText}>
                   Resend code in{" "}
@@ -153,7 +224,8 @@ const VerifyOtp = ({ navigation, route }: any) => {
             {/* Verify Button */}
             <ButtonComp
               title={isVerifying ? "Verifying..." : "Verify & Proceed"}
-              onPress={handleVerify}
+              onPress={handleManualVerify}
+              disabled={isVerifying}
               style={styles.verifyBtn}
             />
 
@@ -187,7 +259,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
-    marginBottom: moderateScaleVertical(24),
+    marginBottom: moderateScaleVertical(16),
   },
   otpBox: {
     width: moderateScale(60),
@@ -205,6 +277,10 @@ const styles = StyleSheet.create({
     borderColor: colors.primaryBlue,
     backgroundColor: colors.primaryBlueSubtle,
   },
+  otpBoxError: {
+    borderColor: "#EF4444",
+    backgroundColor: "#FEF2F2",
+  },
   resendContainer: {
     marginBottom: moderateScaleVertical(24),
   },
@@ -221,6 +297,12 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bold,
     fontSize: textScale(14),
     color: colors.primaryBlue,
+  },
+  resendMaxText: {
+    fontFamily: fontFamily.regular,
+    fontSize: textScale(12),
+    color: colors.textMuted,
+    textAlign: "center",
   },
   verifyBtn: {
     width: "100%",
@@ -243,6 +325,5 @@ const styles = StyleSheet.create({
     color: colors.primaryBlue,
   },
 });
-
 
 export default VerifyOtp;

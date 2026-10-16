@@ -1,18 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Image,
   Alert,
-  Animated,
   Dimensions,
+  RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import colors from "../../constants/colors";
 import fontFamily from "../../constants/fontFamily";
 import imagepath from "../../constants/imagepath";
@@ -22,6 +22,10 @@ import {
   moderateScaleVertical,
   textScale,
 } from "../../styles/responsiveSize";
+import notificationService from "../../services/notificationService";
+import socketService from "../../services/socketService";
+import { NotificationItem } from "../../types/models";
+import ToastService from "../../services/toastService";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -36,112 +40,61 @@ type NotificationCategory =
   | "reports"
   | "offers";
 
-interface NotificationItem {
-  id: string;
-  category: "appointments" | "reminders" | "reports" | "offers";
-  title: string;
-  message: string;
-  time: string;
-  dateGroup: "Today" | "Yesterday" | "Earlier";
-  isRead: boolean;
-  iconType: "calendar" | "checkup" | "scan" | "reward" | "tip";
-  actionLabel?: string;
-  actionScreen?: string;
-  actionParams?: any;
-}
-
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "1",
-    category: "appointments",
-    title: "Appointment Confirmed! 🦷",
-    message:
-      "Your appointment with Dr. Rohan Mehta for Teeth Cleaning & Assessment is confirmed for Mon, 6 Oct at 10:00 AM.",
-    time: "25m ago",
-    dateGroup: "Today",
-    isRead: false,
-    iconType: "calendar",
-    actionLabel: "View Details",
-    actionScreen: NavigationStrings.DOCTOR_DETAIL,
-  },
-  {
-    id: "2",
-    category: "reminders",
-    title: "Time for 6-Month Dental Checkup",
-    message:
-      "It has been 6 months since your last scaling. Keep your enamel protected by booking your routine cleaning.",
-    time: "2h ago",
-    dateGroup: "Today",
-    isRead: false,
-    iconType: "checkup",
-    actionLabel: "Book Now",
-    actionScreen: NavigationStrings.BOOK_APPOINTMENT,
-  },
-  {
-    id: "3",
-    category: "offers",
-    title: "You Earned 150 Smile Points! 🎁",
-    message:
-      "Congratulations! Your DentaCare Platinum Tier benefits have unlocked a 20% discount coupon on clear aligners.",
-    time: "5h ago",
-    dateGroup: "Today",
-    isRead: false,
-    iconType: "reward",
-    actionLabel: "View Rewards",
-    actionScreen: NavigationStrings.PROFILE,
-  },
-  {
-    id: "4",
-    category: "reports",
-    title: "Digital 3D OPG Scan Ready 📄",
-    message:
-      "Dr. Priya Sharma has uploaded your digital panoramic X-Ray scan report to your dental records.",
-    time: "Yesterday, 4:15 PM",
-    dateGroup: "Yesterday",
-    isRead: true,
-    iconType: "scan",
-    actionLabel: "View Records",
-    actionScreen: NavigationStrings.PROFILE,
-  },
-  {
-    id: "5",
-    category: "reminders",
-    title: "Post-Treatment Oral Care Tip 💡",
-    message:
-      "Remember to rinse gently with warm salt water and avoid cold beverages for 24 hours after your treatment.",
-    time: "Yesterday, 11:30 AM",
-    dateGroup: "Yesterday",
-    isRead: true,
-    iconType: "tip",
-  },
-  {
-    id: "6",
-    category: "offers",
-    title: "Family Smile Health Package",
-    message:
-      "Add up to 3 family members to your DentaCare plan and receive free consultation vouchers.",
-    time: "2 Oct, 3:00 PM",
-    dateGroup: "Earlier",
-    isRead: true,
-    iconType: "reward",
-    actionLabel: "Explore Plan",
-    actionScreen: NavigationStrings.PROFILE,
-  },
-];
-
 const NotificationScreen: React.FC<NotificationScreenProps> = ({
   navigation,
 }) => {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<NotificationCategory>("all");
-  const [notifications, setNotifications] = useState<NotificationItem[]>(
-    INITIAL_NOTIFICATIONS,
-  );
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Fetch notifications
+  const fetchNotifications = useCallback(async (cat: NotificationCategory) => {
+    try {
+      const items = await notificationService.getNotifications(
+        cat === "all" ? undefined : cat
+      );
+      setNotifications(items);
+    } catch (e) {
+      console.warn("[NotificationScreen] Error fetching notifications", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    setIsLoading(true);
+    fetchNotifications(activeTab).finally(() => setIsLoading(false));
+  }, [activeTab, fetchNotifications]);
+
+  // Subscribe to real-time notifications via Socket.IO
+  useEffect(() => {
+    const handleNewNotification = (newNotif: NotificationItem) => {
+      setNotifications((prev) => [newNotif, ...prev]);
+    };
+
+    socketService.on("notification:new", handleNewNotification);
+
+    return () => {
+      socketService.off("notification:new", handleNewNotification);
+    };
+  }, []);
+
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchNotifications(activeTab);
+    setIsRefreshing(false);
+  };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  const handleMarkAllRead = () => {
+  const handleMarkAllRead = async () => {
     setNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })));
+    ToastService.success("All notifications marked as read.", "Notifications");
+    try {
+      await notificationService.markAllAsRead();
+    } catch (e) {
+      console.warn("[NotificationScreen] Failed to mark all as read", e);
+    }
   };
 
   const handleClearAll = () => {
@@ -153,41 +106,49 @@ const NotificationScreen: React.FC<NotificationScreenProps> = ({
         {
           text: "Clear",
           style: "destructive",
-          onPress: () => setNotifications([]),
+          onPress: async () => {
+            const ids = notifications.map((n) => n.id);
+            setNotifications([]);
+            ToastService.info("All notifications cleared.", "Cleared");
+            for (const id of ids) {
+              await notificationService.deleteNotification(id);
+            }
+          },
         },
-      ],
+      ]
     );
   };
 
-  const handleItemPress = (item: NotificationItem) => {
-    // Mark as read
+  const handleItemPress = async (item: NotificationItem) => {
+    // Optimistically mark as read
     setNotifications((prev) =>
-      prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n)),
+      prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n))
     );
 
-    // Navigate to action if available
+    try {
+      await notificationService.markAsRead(item.id);
+    } catch (e) {
+      console.warn("[NotificationScreen] Failed to mark as read", e);
+    }
+
+    // Navigate to action screen
     if (item.actionScreen) {
-      if (item.actionScreen === NavigationStrings.DOCTOR_DETAIL) {
+      if (item.actionScreen === NavigationStrings.DOCTOR_DETAIL || item.actionScreen === "DoctorDetail") {
         navigation.navigate(NavigationStrings.DOCTOR_DETAIL, {
           doctor: {
-            id: "1",
+            id: "doc_01",
             name: "Dr. Rohan Mehta",
             degree: "BDS, MDS - Orthodontist",
             rating: "4.8",
             reviewsCount: "320",
-            distance: "2 km away",
             location: "SmileCare Dental Clinic, New Delhi",
             image: imagepath.dentistRohan,
-            experience: "8+ years",
-            patientsCount: "2,400+",
-            about:
-              "Dr. Rohan Mehta is a highly experienced orthodontist with over 8 years of experience in braces, aligners, and smile correction treatments.",
           },
         });
-      } else if (item.actionScreen === NavigationStrings.BOOK_APPOINTMENT) {
+      } else if (item.actionScreen === NavigationStrings.BOOK_APPOINTMENT || item.actionScreen === "BookAppointment") {
         navigation.navigate(NavigationStrings.BOOK_APPOINTMENT, {
           doctor: {
-            id: "1",
+            id: "doc_01",
             name: "Dr. Rohan Mehta",
             degree: "BDS, MDS - Orthodontist",
             image: imagepath.dentistRohan,
@@ -199,14 +160,14 @@ const NotificationScreen: React.FC<NotificationScreenProps> = ({
     }
   };
 
-  const handleDeleteItem = (id: string) => {
+  const handleDeleteItem = async (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
+    try {
+      await notificationService.deleteNotification(id);
+    } catch (e) {
+      console.warn("[NotificationScreen] Failed to delete notification", e);
+    }
   };
-
-  const filteredList = notifications.filter((item) => {
-    if (activeTab === "all") return true;
-    return item.category === activeTab;
-  });
 
   const getIconConfig = (iconType: NotificationItem["iconType"]) => {
     switch (iconType) {
@@ -244,20 +205,18 @@ const NotificationScreen: React.FC<NotificationScreenProps> = ({
     }
   };
 
-  // Group filtered notifications by dateGroup
+  // Group notifications by dateGroup
   const groups: { [key: string]: NotificationItem[] } = {};
-  filteredList.forEach((item) => {
-    if (!groups[item.dateGroup]) {
-      groups[item.dateGroup] = [];
+  notifications.forEach((item) => {
+    const grp = item.dateGroup || "Today";
+    if (!groups[grp]) {
+      groups[grp] = [];
     }
-    groups[item.dateGroup].push(item);
+    groups[grp].push(item);
   });
 
   const filterTabs: { key: NotificationCategory; label: string }[] = [
-    {
-      key: "all",
-      label: `All (${notifications.length})`,
-    },
+    { key: "all", label: `All (${notifications.length})` },
     { key: "appointments", label: "Appointments" },
     { key: "reminders", label: "Reminders" },
     { key: "reports", label: "Reports & Scans" },
@@ -363,6 +322,14 @@ const NotificationScreen: React.FC<NotificationScreenProps> = ({
       <ScrollView
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primaryBlue]}
+            tintColor={colors.primaryBlue}
+          />
+        }
         contentContainerStyle={[
           styles.scrollContent,
           {
@@ -372,7 +339,12 @@ const NotificationScreen: React.FC<NotificationScreenProps> = ({
           },
         ]}
       >
-        {filteredList.length === 0 ? (
+        {isLoading && !isRefreshing ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="small" color={colors.primaryBlue} />
+            <Text style={styles.loadingText}>Loading notifications...</Text>
+          </View>
+        ) : notifications.length === 0 ? (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconCircle}>
               <Ionicons
@@ -511,8 +483,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bgLight,
   },
-
-  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -573,8 +543,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
-  // Filter Tabs
   tabsWrapper: {
     backgroundColor: colors.white,
     paddingVertical: moderateScaleVertical(10),
@@ -608,11 +576,19 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bold,
     color: colors.white,
   },
-
-  // Scroll Content
   scrollContent: {
     paddingHorizontal: moderateScale(16),
     paddingTop: moderateScaleVertical(12),
+  },
+  loadingBox: {
+    paddingVertical: moderateScaleVertical(40),
+    alignItems: "center",
+    gap: moderateScale(8),
+  },
+  loadingText: {
+    fontFamily: fontFamily.regular,
+    fontSize: textScale(12.5),
+    color: colors.textMuted,
   },
   groupContainer: {
     marginBottom: moderateScaleVertical(16),
@@ -625,8 +601,6 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-
-  // Swipeable Outer & Card
   cardOuterWrapper: {
     marginBottom: moderateScaleVertical(10),
     borderRadius: moderateScale(16),
@@ -746,8 +720,6 @@ const styles = StyleSheet.create({
     fontSize: textScale(11.5),
     color: colors.primaryBlue,
   },
-
-  // Empty State
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",

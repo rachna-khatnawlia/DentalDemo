@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,10 +8,11 @@ import {
   TextInput,
   Image,
   Dimensions,
+  RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { useDispatch } from "react-redux";
-import { onLogout } from "../../redux/slice/authSlice";
+import { useSelector } from "react-redux";
 import colors from "../../constants/colors";
 import fontFamily from "../../constants/fontFamily";
 import imagepath from "../../constants/imagepath";
@@ -24,71 +25,103 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
+import doctorService from "../../services/doctorService";
+import serviceCategoryService from "../../services/serviceCategoryService";
+import patientService from "../../services/patientService";
+import notificationService from "../../services/notificationService";
+import { Doctor, ServiceCategory, Appointment } from "../../types/models";
+
 const { width } = Dimensions.get("window");
-
-const CATEGORIES = [
-  {
-    id: "1",
-    title: "General\nDentistry",
-    icon: "tooth-outline",
-    iconSet: "mci",
-  },
-  {
-    id: "2",
-    title: "Teeth\nCleaning",
-    icon: "sparkles-outline",
-    iconSet: "ion",
-  },
-  { id: "3", title: "Orthodontics", icon: "tooth", iconSet: "mci" },
-  {
-    id: "4",
-    title: "Cosmetic\nDentistry",
-    icon: "emoticon-happy-outline",
-    iconSet: "mci",
-  },
-];
-
-const TOP_DENTISTS = [
-  {
-    id: "1",
-    name: "Dr. Rohan Mehta",
-    degree: "BDS, MDS - Orthodontist",
-    rating: "4.8",
-    reviewsCount: "320",
-    distance: "2 km away",
-    location: "SmileCare Dental Clinic, New Delhi",
-    image: imagepath.dentistRohan,
-  },
-  {
-    id: "2",
-    name: "Dr. Priya Sharma",
-    degree: "BDS - Cosmetic Dentist",
-    rating: "4.7",
-    reviewsCount: "210",
-    distance: "3 km away",
-    location: "DentArc Aesthetic Center, New Delhi",
-    image: imagepath.dentistPriya,
-  },
-];
 
 const Dashboard = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
-  const dispatch = useDispatch();
+  const reduxUser = useSelector((state: any) => state?.persisted?.auth?.user);
 
+  // Dynamic Server State
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("1");
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [upcomingAppointment, setUpcomingAppointment] = useState<Appointment | null>(null);
+  const [patientName, setPatientName] = useState(reduxUser?.name || "Rachna");
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  // UI State
   const [activeTab, setActiveTab] = useState<
     "home" | "appointments" | "explore" | "profile"
   >("home");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingDoctors, setIsLoadingDoctors] = useState(false);
 
-  const handleOpenDoctor = (doc: any) => {
+  // Load Initial Dashboard Data
+  const loadDashboardData = useCallback(async () => {
+    try {
+      const [cats, summary, unreadCount] = await Promise.all([
+        serviceCategoryService.getCategories(),
+        patientService.getSummary(),
+        notificationService.getUnreadCount(),
+      ]);
+
+      setCategories(cats);
+      if (summary?.patient?.firstName) {
+        setPatientName(summary.patient.firstName);
+      }
+      setUpcomingAppointment(summary?.upcomingAppointment || null);
+      setUnreadNotifications(unreadCount);
+    } catch (e) {
+      console.warn("[Dashboard] Error loading dashboard summary:", e);
+    }
+  }, []);
+
+  // Load Doctors with search & category filter
+  const loadDoctors = useCallback(async (query: string = "") => {
+    setIsLoadingDoctors(true);
+    try {
+      const docList = await doctorService.getDoctors({
+        query,
+      });
+      setDoctors(docList);
+    } catch (e) {
+      console.warn("[Dashboard] Error loading doctors:", e);
+    } finally {
+      setIsLoadingDoctors(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDashboardData();
+    loadDoctors();
+  }, [loadDashboardData, loadDoctors]);
+
+  // Debounced search effect
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      loadDoctors(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [searchQuery, loadDoctors]);
+
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.all([loadDashboardData(), loadDoctors(searchQuery)]);
+    setIsRefreshing(false);
+  };
+
+  const handleOpenDoctor = (doc: Doctor) => {
     navigation.navigate(NavigationStrings.DOCTOR_DETAIL, { doctor: doc });
   };
 
   const handleBookBanner = () => {
-    navigation.navigate(NavigationStrings.DOCTOR_DETAIL, {
-      doctor: TOP_DENTISTS[0],
-    });
+    if (doctors.length > 0) {
+      navigation.navigate(NavigationStrings.DOCTOR_DETAIL, {
+        doctor: doctors[0],
+      });
+    } else {
+      navigation.navigate(NavigationStrings.BOOK_APPOINTMENT, {
+        selectedService: "Teeth Cleaning",
+      });
+    }
   };
 
   return (
@@ -128,12 +161,20 @@ const Dashboard = ({ navigation }: any) => {
             size={moderateScale(22)}
             color={colors.textPrimary}
           />
-          <View style={styles.notificationBadge} />
+          {unreadNotifications > 0 && <View style={styles.notificationBadge} />}
         </TouchableOpacity>
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primaryBlue]}
+            tintColor={colors.primaryBlue}
+          />
+        }
         contentContainerStyle={[
           styles.scrollContent,
           { paddingBottom: insets.bottom + moderateScaleVertical(85) },
@@ -141,7 +182,7 @@ const Dashboard = ({ navigation }: any) => {
       >
         {/* User Greeting */}
         <View style={styles.greetingSection}>
-          <Text style={styles.greetingTitle}>Hello, Rachna👋</Text>
+          <Text style={styles.greetingTitle}>Hello, {patientName}👋</Text>
           <Text style={styles.greetingSubtitle}>
             How can we help you today?
           </Text>
@@ -163,6 +204,15 @@ const Dashboard = ({ navigation }: any) => {
               onChangeText={setSearchQuery}
               style={styles.searchInput}
             />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery("")}>
+                <Ionicons
+                  name="close-circle"
+                  size={moderateScale(18)}
+                  color={colors.textMuted}
+                />
+              </TouchableOpacity>
+            )}
           </View>
           <TouchableOpacity activeOpacity={0.7} style={styles.filterBtn}>
             <Ionicons
@@ -173,13 +223,50 @@ const Dashboard = ({ navigation }: any) => {
           </TouchableOpacity>
         </View>
 
+        {/* Upcoming Appointment Spotlight Card (if active) */}
+        {upcomingAppointment && (
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() =>
+              navigation.navigate(NavigationStrings.DOCTOR_DETAIL, {
+                doctor: {
+                  id: upcomingAppointment.doctorId,
+                  name: upcomingAppointment.doctorName,
+                  degree: upcomingAppointment.doctorSpecialty || "Orthodontist",
+                  rating: "4.8",
+                  reviewsCount: "320",
+                  location: upcomingAppointment.clinicAddress,
+                  image: upcomingAppointment.doctorImage || imagepath.dentistRohan,
+                },
+              })
+            }
+            style={styles.upcomingSpotlight}
+          >
+            <View style={styles.upcomingHeader}>
+              <View style={styles.upcomingBadge}>
+                <View style={styles.activePillDot} />
+                <Text style={styles.upcomingBadgeText}>CONFIRMED VISIT</Text>
+              </View>
+              <Text style={styles.upcomingDateText}>
+                {upcomingAppointment.scheduledDate} · {upcomingAppointment.scheduledTime}
+              </Text>
+            </View>
+            <Text style={styles.upcomingDoctor}>
+              {upcomingAppointment.doctorName}
+            </Text>
+            <Text style={styles.upcomingService}>
+              {upcomingAppointment.serviceName} · {upcomingAppointment.clinicName}
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {/* Promo Banner Card ("Healthy Teeth Happier You") */}
         <View style={styles.bannerCard}>
           <View style={styles.bannerLeft}>
             <Text style={styles.bannerTitle}>Healthy Teeth</Text>
             <Text style={styles.bannerTitleSub}>Happier You</Text>
             <Text style={styles.bannerDesc}>
-              Get expert dental care from trusted specialists.
+              Get expert dental care from verified specialists.
             </Text>
             <TouchableOpacity
               activeOpacity={0.85}
@@ -201,7 +288,7 @@ const Dashboard = ({ navigation }: any) => {
 
         {/* Service Categories */}
         <View style={styles.categoriesRow}>
-          {CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const isSelected = selectedCategory === cat.id;
             return (
               <TouchableOpacity
@@ -247,62 +334,81 @@ const Dashboard = ({ navigation }: any) => {
         {/* Top Dentists Section */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Top Dentists</Text>
-          <TouchableOpacity activeOpacity={0.7}>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => loadDoctors("")}>
             <Text style={styles.seeAllText}>See All</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Doctor Cards */}
-        {TOP_DENTISTS.map((item) => (
-          <TouchableOpacity
-            key={item.id}
-            activeOpacity={0.85}
-            onPress={() => handleOpenDoctor(item)}
-            style={styles.doctorCard}
-          >
-            <Image
-              source={item.image}
-              style={styles.doctorAvatar}
-              resizeMode="cover"
-            />
-            <View style={styles.doctorInfo}>
-              <Text style={styles.doctorName}>{item.name}</Text>
-              <Text style={styles.doctorDegree}>{item.degree}</Text>
+        {/* Doctor List or Loading / Empty State */}
+        {isLoadingDoctors ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="small" color={colors.primaryBlue} />
+            <Text style={styles.loadingText}>Finding top specialists...</Text>
+          </View>
+        ) : doctors.length === 0 ? (
+          <View style={styles.emptyDoctorBox}>
+            <Ionicons name="search" size={moderateScale(32)} color={colors.textMuted} />
+            <Text style={styles.emptyDoctorTitle}>No dentists found</Text>
+            <Text style={styles.emptyDoctorSubtitle}>
+              Try searching for a different specialty or clear your filter
+            </Text>
+            <TouchableOpacity
+              onPress={() => setSearchQuery("")}
+              style={styles.clearSearchBtn}
+            >
+              <Text style={styles.clearSearchBtnText}>Clear Search</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          doctors.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              activeOpacity={0.85}
+              onPress={() => handleOpenDoctor(item)}
+              style={styles.doctorCard}
+            >
+              <Image
+                source={item.image || imagepath.dentistRohan}
+                style={styles.doctorAvatar}
+                resizeMode="cover"
+              />
+              <View style={styles.doctorInfo}>
+                <Text style={styles.doctorName}>{item.name}</Text>
+                <Text style={styles.doctorDegree}>{item.degree}</Text>
 
-              <View style={styles.ratingAndDistanceRow}>
-                <View style={styles.ratingBadge}>
+                <View style={styles.ratingAndDistanceRow}>
+                  <View style={styles.ratingBadge}>
+                    <Ionicons
+                      name="star"
+                      size={moderateScale(12)}
+                      color={colors.starYellow}
+                    />
+                    <Text style={styles.ratingValue}> {item.rating}</Text>
+                    <Text style={styles.reviewsCount}>
+                      {" "}
+                      ({item.reviewsCount} reviews)
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.distanceRow}>
                   <Ionicons
-                    name="star"
+                    name="location-outline"
                     size={moderateScale(12)}
-                    color={colors.starYellow}
+                    color={colors.textSecondary}
                   />
-                  <Text style={styles.ratingValue}> {item.rating}</Text>
-                  <Text style={styles.reviewsCount}>
-                    {" "}
-                    ({item.reviewsCount} reviews)
-                  </Text>
+                  <Text style={styles.distanceText}> {item.distance || "Near you"}</Text>
                 </View>
               </View>
 
-              <View style={styles.distanceRow}>
-                <Ionicons
-                  name="location-outline"
-                  size={moderateScale(12)}
-                  color={colors.textSecondary}
-                />
-                <Text style={styles.distanceText}> {item.distance}</Text>
-              </View>
-            </View>
-
-            <Ionicons
-              name="chevron-forward"
-              size={moderateScale(18)}
-              color={colors.textMuted}
-            />
-          </TouchableOpacity>
-        ))}
-
-
+              <Ionicons
+                name="chevron-forward"
+                size={moderateScale(18)}
+                color={colors.textMuted}
+              />
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
 
       {/* Bottom Navigation Bar */}
@@ -367,7 +473,10 @@ const Dashboard = ({ navigation }: any) => {
 
         <TouchableOpacity
           activeOpacity={0.7}
-          onPress={() => setActiveTab("explore")}
+          onPress={() => {
+            setActiveTab("explore");
+            navigation.navigate(NavigationStrings.NOTIFICATIONS);
+          }}
           style={styles.navItem}
         >
           <Ionicons
@@ -448,10 +557,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: moderateScale(8),
     right: moderateScale(10),
-    width: moderateScale(7),
-    height: moderateScale(7),
+    width: moderateScale(8),
+    height: moderateScale(8),
     borderRadius: moderateScale(4),
-    backgroundColor: colors.primaryBlue,
+    backgroundColor: "#EF4444",
   },
   scrollContent: {
     paddingHorizontal: moderateScale(20),
@@ -503,6 +612,62 @@ const styles = StyleSheet.create({
     borderColor: colors.borderLight,
     justifyContent: "center",
     alignItems: "center",
+  },
+  upcomingSpotlight: {
+    backgroundColor: colors.white,
+    borderRadius: moderateScale(16),
+    borderWidth: 1.5,
+    borderColor: colors.primaryBlue,
+    padding: moderateScale(14),
+    marginBottom: moderateScaleVertical(18),
+    shadowColor: colors.primaryBlue,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  upcomingHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: moderateScaleVertical(6),
+  },
+  upcomingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.primaryBlueLight,
+    paddingHorizontal: moderateScale(8),
+    paddingVertical: moderateScaleVertical(3),
+    borderRadius: moderateScale(10),
+    gap: moderateScale(5),
+  },
+  activePillDot: {
+    width: moderateScale(6),
+    height: moderateScale(6),
+    borderRadius: moderateScale(3),
+    backgroundColor: colors.primaryBlue,
+  },
+  upcomingBadgeText: {
+    fontFamily: fontFamily.bold,
+    fontSize: textScale(10),
+    color: colors.primaryBlue,
+    letterSpacing: 0.4,
+  },
+  upcomingDateText: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: textScale(11.5),
+    color: colors.textSecondary,
+  },
+  upcomingDoctor: {
+    fontFamily: fontFamily.bold,
+    fontSize: textScale(15),
+    color: colors.textPrimary,
+  },
+  upcomingService: {
+    fontFamily: fontFamily.regular,
+    fontSize: textScale(12),
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   bannerCard: {
     backgroundColor: colors.bannerBg,
@@ -610,6 +775,44 @@ const styles = StyleSheet.create({
   seeAllText: {
     fontFamily: fontFamily.semiBold,
     fontSize: textScale(13),
+    color: colors.primaryBlue,
+  },
+  loadingBox: {
+    paddingVertical: moderateScaleVertical(30),
+    alignItems: "center",
+    gap: moderateScale(8),
+  },
+  loadingText: {
+    fontFamily: fontFamily.regular,
+    fontSize: textScale(12),
+    color: colors.textMuted,
+  },
+  emptyDoctorBox: {
+    paddingVertical: moderateScaleVertical(30),
+    alignItems: "center",
+    gap: moderateScale(6),
+  },
+  emptyDoctorTitle: {
+    fontFamily: fontFamily.bold,
+    fontSize: textScale(15),
+    color: colors.textPrimary,
+  },
+  emptyDoctorSubtitle: {
+    fontFamily: fontFamily.regular,
+    fontSize: textScale(12),
+    color: colors.textMuted,
+    textAlign: "center",
+  },
+  clearSearchBtn: {
+    marginTop: moderateScaleVertical(8),
+    backgroundColor: colors.primaryBlueLight,
+    paddingHorizontal: moderateScale(14),
+    paddingVertical: moderateScaleVertical(6),
+    borderRadius: moderateScale(14),
+  },
+  clearSearchBtnText: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: textScale(12),
     color: colors.primaryBlue,
   },
   doctorCard: {

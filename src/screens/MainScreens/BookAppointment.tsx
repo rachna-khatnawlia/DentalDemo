@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,6 +23,10 @@ import {
   moderateScaleVertical,
   textScale,
 } from "../../styles/responsiveSize";
+import appointmentService from "../../services/appointmentService";
+import ValidationSchema from "../../schemas/validation";
+import { Appointment, Doctor, TimeSlot } from "../../types/models";
+import ToastService from "../../services/toastService";
 
 const SERVICES_OPTIONS = [
   "Teeth Cleaning",
@@ -30,49 +36,147 @@ const SERVICES_OPTIONS = [
   "General Dentistry Checkup",
 ];
 
-const DATES_LIST = [
-  { id: "1", day: "Mon", date: "6", month: "Oct" },
-  { id: "2", day: "Tue", date: "7", month: "Oct" },
-  { id: "3", day: "Wed", date: "8", month: "Oct" },
-  { id: "4", day: "Thu", date: "9", month: "Oct" },
-  { id: "5", day: "Fri", date: "10", month: "Oct" },
-  { id: "6", day: "Sat", date: "11", month: "Oct" },
-];
+// Generate next 6 days dynamically starting from today
+const generateNextDates = () => {
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const list = [];
+  const now = new Date();
 
-const TIME_SLOTS = [
-  "10:00 AM",
-  "10:30 AM",
-  "11:00 AM",
-  "11:30 AM",
-  "12:00 PM",
-  "12:30 PM",
-  "2:00 PM",
-  "2:30 PM",
-  "3:00 PM",
-];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const dateKey = `${yyyy}-${mm}-${dd}`;
+
+    list.push({
+      id: String(i + 1),
+      day: days[d.getDay()],
+      date: String(d.getDate()),
+      month: months[d.getMonth()],
+      fullDate: dateKey,
+    });
+  }
+  return list;
+};
+
+const DATES_LIST = generateNextDates();
 
 const BookAppointment = ({ navigation, route }: any) => {
   const insets = useSafeAreaInsets();
-  const doctor = route?.params?.doctor || {
+  const doctor: Doctor = route?.params?.doctor || {
+    id: "doc_01",
     name: "Dr. Rohan Mehta",
     degree: "Orthodontist",
+    specialty: "Orthodontics",
     rating: "4.8",
     reviewsCount: "320",
     image: imagepath.dentistRohan,
+    location: "SmileCare Dental Clinic, New Delhi",
   };
 
   const initialService = route?.params?.selectedService || "Teeth Cleaning";
   const [selectedService, setSelectedService] = useState(initialService);
   const [showServicePicker, setShowServicePicker] = useState(false);
-  const [selectedDateId, setSelectedDateId] = useState("1"); // Mon 6 Oct by default
-  const [selectedTime, setSelectedTime] = useState("10:00 AM"); // 10:00 AM by default
+  const [selectedDateId, setSelectedDateId] = useState(DATES_LIST[0].id);
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
+  const [selectedTime, setSelectedTime] = useState<string>("10:00 AM");
   const [notes, setNotes] = useState("");
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [confirmedBooking, setConfirmedBooking] = useState<Appointment | null>(null);
 
   const activeDate = DATES_LIST.find((d) => d.id === selectedDateId) || DATES_LIST[0];
 
-  const handleConfirm = () => {
-    setShowSuccessModal(true);
+  // Fetch slots whenever selected date or doctor changes
+  const fetchSlots = useCallback(async () => {
+    setIsLoadingSlots(true);
+    try {
+      const slots = await appointmentService.getAvailableSlots(doctor.id, activeDate.fullDate);
+      setTimeSlots(slots);
+      // Select first available slot
+      const firstAvailable = slots.find((s) => s.available);
+      if (firstAvailable) {
+        setSelectedTime(firstAvailable.time);
+      }
+    } catch (e) {
+      console.warn("[BookAppointment] Failed to load slots", e);
+    } finally {
+      setIsLoadingSlots(false);
+    }
+  }, [doctor.id, activeDate.fullDate]);
+
+  useEffect(() => {
+    fetchSlots();
+  }, [fetchSlots]);
+
+  const handleConfirm = async () => {
+    if (isSubmitting) return;
+
+    // Validate inputs
+    const validation = ValidationSchema.validateBookingSelection({
+      service: selectedService,
+      date: activeDate.fullDate,
+      time: selectedTime,
+    });
+
+    if (!validation.isValid) {
+      ToastService.warning(
+        validation.error || "Please select all required booking details.",
+        "Incomplete Selection"
+      );
+      return;
+    }
+
+    // Check slot availability locally
+    const currentSlot = timeSlots.find((s) => s.time === selectedTime);
+    if (currentSlot && !currentSlot.available) {
+      ToastService.warning(
+        "The selected time slot is already booked. Please choose another slot.",
+        "Slot Unavailable"
+      );
+      fetchSlots();
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const appointment = await appointmentService.bookAppointment({
+        doctorId: doctor.id,
+        serviceId: selectedService,
+        date: activeDate.fullDate,
+        timeSlot: selectedTime,
+        notes: notes.trim(),
+      });
+
+      setIsSubmitting(false);
+      setConfirmedBooking(appointment);
+      setShowSuccessModal(true);
+      ToastService.success(
+        "Your appointment has been booked successfully!",
+        "Appointment Confirmed 🎉"
+      );
+    } catch (error: any) {
+      setIsSubmitting(false);
+
+      if (error?.statusCode === 409) {
+        ToastService.error(
+          "This appointment slot was just booked by another patient. Please pick another time slot.",
+          "Slot Conflict"
+        );
+        fetchSlots();
+      } else {
+        ToastService.error(
+          error?.message ||
+            "Unable to confirm appointment at this time. Please check your connection.",
+          "Booking Error"
+        );
+      }
+    }
   };
 
   return (
@@ -230,28 +334,42 @@ const BookAppointment = ({ navigation, route }: any) => {
 
         {/* Select Time Section */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionLabel}>Select Time</Text>
+          <View style={styles.timeSectionHeader}>
+            <Text style={styles.sectionLabel}>Select Time</Text>
+            {isLoadingSlots && <ActivityIndicator size="small" color={colors.primaryBlue} />}
+          </View>
+
           <View style={styles.timeSlotsGrid}>
-            {TIME_SLOTS.map((slot, index) => {
-              const isSelected = selectedTime === slot;
+            {timeSlots.map((slot, index) => {
+              const isSelected = selectedTime === slot.time;
+              const isAvailable = slot.available;
+
               return (
                 <TouchableOpacity
                   key={index}
                   activeOpacity={0.8}
-                  onPress={() => setSelectedTime(slot)}
+                  disabled={!isAvailable}
+                  onPress={() => setSelectedTime(slot.time)}
                   style={[
                     styles.timeChip,
-                    isSelected ? styles.timeChipActive : styles.timeChipInactive,
+                    !isAvailable && styles.timeChipDisabled,
+                    isSelected && isAvailable && styles.timeChipActive,
+                    !isSelected && isAvailable && styles.timeChipInactive,
                   ]}
                 >
                   <Text
                     style={[
                       styles.timeChipText,
-                      isSelected ? styles.textWhite : styles.textPrimary,
+                      !isAvailable && styles.textDisabled,
+                      isSelected && isAvailable && styles.textWhite,
+                      !isSelected && isAvailable && styles.textPrimary,
                     ]}
                   >
-                    {slot}
+                    {slot.time}
                   </Text>
+                  {!isAvailable && (
+                    <Text style={styles.bookedTag}>Booked</Text>
+                  )}
                 </TouchableOpacity>
               );
             })}
@@ -262,7 +380,7 @@ const BookAppointment = ({ navigation, route }: any) => {
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionLabel}>Add Notes (Optional)</Text>
           <TextInput
-            placeholder="Any specific concerns or requirements?"
+            placeholder="Any specific dental concerns or medical history?"
             placeholderTextColor={colors.textMuted}
             value={notes}
             onChangeText={setNotes}
@@ -283,9 +401,14 @@ const BookAppointment = ({ navigation, route }: any) => {
         <TouchableOpacity
           activeOpacity={0.88}
           onPress={handleConfirm}
-          style={styles.confirmButton}
+          disabled={isSubmitting}
+          style={[styles.confirmButton, isSubmitting && { opacity: 0.8 }]}
         >
-          <Text style={styles.confirmButtonText}>Confirm Appointment</Text>
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color={colors.white} />
+          ) : (
+            <Text style={styles.confirmButtonText}>Confirm Appointment</Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -304,6 +427,12 @@ const BookAppointment = ({ navigation, route }: any) => {
               </Text>
               .
             </Text>
+
+            {confirmedBooking?.tokenNumber && (
+              <View style={styles.tokenPill}>
+                <Text style={styles.tokenLabel}>Queue Token: #{confirmedBooking.tokenNumber}</Text>
+              </View>
+            )}
 
             <TouchableOpacity
               activeOpacity={0.85}
@@ -410,6 +539,12 @@ const styles = StyleSheet.create({
   },
   sectionContainer: {
     marginBottom: moderateScaleVertical(22),
+  },
+  timeSectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: moderateScaleVertical(10),
   },
   sectionLabel: {
     fontFamily: fontFamily.bold,
@@ -534,9 +669,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
+  timeChipDisabled: {
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    opacity: 0.6,
+  },
   timeChipText: {
     fontFamily: fontFamily.semiBold,
     fontSize: textScale(13),
+  },
+  bookedTag: {
+    fontFamily: fontFamily.medium,
+    fontSize: textScale(9),
+    color: colors.textMuted,
+    marginTop: 2,
   },
   textWhite: {
     color: colors.white,
@@ -548,6 +695,9 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   textMuted: {
+    color: colors.textMuted,
+  },
+  textDisabled: {
     color: colors.textMuted,
   },
   notesInput: {
@@ -631,6 +781,18 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: textScale(20),
     marginVertical: moderateScaleVertical(12),
+  },
+  tokenPill: {
+    backgroundColor: colors.primaryBlueLight,
+    paddingHorizontal: moderateScale(14),
+    paddingVertical: moderateScaleVertical(6),
+    borderRadius: moderateScale(14),
+    marginBottom: moderateScaleVertical(8),
+  },
+  tokenLabel: {
+    fontFamily: fontFamily.bold,
+    fontSize: textScale(13),
+    color: colors.primaryBlue,
   },
   modalDoneBtn: {
     width: "100%",

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   Switch,
   Alert,
   Modal,
+  RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,31 +27,95 @@ import {
   moderateScaleVertical,
   textScale,
 } from "../../styles/responsiveSize";
+import patientService from "../../services/patientService";
+import notificationService from "../../services/notificationService";
+import authService from "../../services/authService";
+import { PatientProfile, Appointment } from "../../types/models";
+import { MOCK_PATIENT_PROFILE, MOCK_UPCOMING_APPOINTMENT } from "../../services/mockData";
+import ToastService from "../../services/toastService";
 
 const Profile = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
 
+  // Dynamic Server State
+  const [profile, setProfile] = useState<PatientProfile>(MOCK_PATIENT_PROFILE);
+  const [upcomingAppointment, setUpcomingAppointment] = useState<Appointment | null>(MOCK_UPCOMING_APPOINTMENT);
   const [remindersEnabled, setRemindersEnabled] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Modals
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
 
-  const handleLogoutConfirm = () => {
-    setShowLogoutModal(false);
-    dispatch(onLogout());
+  const loadProfileData = useCallback(async () => {
+    try {
+      const [profData, summaryData, prefs] = await Promise.all([
+        patientService.getProfile(),
+        patientService.getSummary(),
+        notificationService.getPreferences(),
+      ]);
+
+      setProfile(profData);
+      setUpcomingAppointment(summaryData?.upcomingAppointment || null);
+      setRemindersEnabled(prefs.appointmentReminders);
+    } catch (e) {
+      console.warn("[Profile] Error loading profile data", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadProfileData();
+  }, [loadProfileData]);
+
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await loadProfileData();
+    setIsRefreshing(false);
+  };
+
+  const handleToggleReminders = async (value: boolean) => {
+    setRemindersEnabled(value);
+    ToastService.info(
+      value ? "Appointment reminders enabled" : "Appointment reminders disabled",
+      "Notifications"
+    );
+    try {
+      await notificationService.updatePreferences({ appointmentReminders: value });
+    } catch (e) {
+      console.warn("[Profile] Failed to update reminder preference", e);
+    }
+  };
+
+  const handleLogoutConfirm = async () => {
+    setIsLoggingOut(true);
+    try {
+      await authService.logout();
+    } catch (e) {
+      console.warn("[Profile] Logout error", e);
+    } finally {
+      setIsLoggingOut(false);
+      setShowLogoutModal(false);
+      ToastService.info("You have been signed out.", "Logged Out");
+      dispatch(onLogout());
+    }
   };
 
   const handleOpenDoctor = () => {
-    navigation.navigate(NavigationStrings.DOCTOR_DETAIL, {
-      doctor: {
-        name: "Dr. Rohan Mehta",
-        degree: "BDS, MDS - Orthodontist",
-        rating: "4.8",
-        reviewsCount: "320",
-        location: "SmileCare Dental Clinic, New Delhi",
-        image: imagepath.dentistRohan,
-      },
-    });
+    if (upcomingAppointment) {
+      navigation.navigate(NavigationStrings.DOCTOR_DETAIL, {
+        doctor: {
+          id: upcomingAppointment.doctorId,
+          name: upcomingAppointment.doctorName,
+          degree: upcomingAppointment.doctorSpecialty || "BDS, MDS - Orthodontist",
+          rating: "4.8",
+          reviewsCount: "320",
+          location: upcomingAppointment.clinicAddress,
+          image: upcomingAppointment.doctorImage || imagepath.dentistRohan,
+        },
+      });
+    }
   };
 
   return (
@@ -86,6 +152,14 @@ const Profile = ({ navigation }: any) => {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primaryBlue]}
+            tintColor={colors.primaryBlue}
+          />
+        }
         contentContainerStyle={[
           styles.scrollContent,
           { paddingBottom: insets.bottom + moderateScaleVertical(40) },
@@ -112,11 +186,11 @@ const Profile = ({ navigation }: any) => {
             </View>
           </TouchableOpacity>
 
-          <Text style={styles.userName}>Rachna</Text>
-          <Text style={styles.userEmail}>rachna@example.com</Text>
+          <Text style={styles.userName}>{profile.firstName} {profile.lastName}</Text>
+          <Text style={styles.userEmail}>{profile.email}</Text>
 
           <View style={styles.phoneLocationRow}>
-            <Text style={styles.userPhone}>+91 98765 43210</Text>
+            <Text style={styles.userPhone}>{profile.phone}</Text>
             <Text style={styles.dotSeparator}>•</Text>
             <View style={styles.locationBadge}>
               <Ionicons
@@ -124,11 +198,11 @@ const Profile = ({ navigation }: any) => {
                 size={12}
                 color={colors.textSecondary}
               />
-              <Text style={styles.userLocation}> New Delhi</Text>
+              <Text style={styles.userLocation}> {profile.city}</Text>
             </View>
           </View>
 
-          {/* Platinum Membership Badge */}
+          {/* Membership Badge */}
           <View style={styles.memberBadge}>
             <Ionicons
               name="shield-checkmark"
@@ -136,7 +210,7 @@ const Profile = ({ navigation }: any) => {
               color={colors.primaryBlue}
             />
             <Text style={styles.memberBadgeText}>
-              DentaCare Platinum Patient
+              DentaCare {profile.membershipTier} Patient
             </Text>
           </View>
         </View>
@@ -154,7 +228,7 @@ const Profile = ({ navigation }: any) => {
               />
             </View>
             <Text numberOfLines={1} style={styles.statValue}>
-              6 Oct
+              {upcomingAppointment ? upcomingAppointment.scheduledDate.slice(5) : "None"}
             </Text>
             <Text numberOfLines={1} style={styles.statLabel}>
               Next Visit
@@ -172,7 +246,7 @@ const Profile = ({ navigation }: any) => {
               />
             </View>
             <Text numberOfLines={1} style={styles.statValue}>
-              4 Visits
+              {profile.visitsCount} Visits
             </Text>
             <Text numberOfLines={1} style={styles.statLabel}>
               Completed
@@ -190,7 +264,7 @@ const Profile = ({ navigation }: any) => {
               />
             </View>
             <Text numberOfLines={1} style={styles.statValue}>
-              Active
+              {profile.insurancePolicyNumber ? "Active" : "None"}
             </Text>
             <Text numberOfLines={1} style={styles.statLabel}>
               Insurance
@@ -208,7 +282,7 @@ const Profile = ({ navigation }: any) => {
               />
             </View>
             <Text numberOfLines={1} style={styles.statValue}>
-              450 Pts
+              {profile.rewardPoints} Pts
             </Text>
             <Text numberOfLines={1} style={styles.statLabel}>
               Rewards
@@ -217,79 +291,83 @@ const Profile = ({ navigation }: any) => {
         </View>
 
         {/* Upcoming Appointment Spotlight Card */}
-        <View style={styles.appointmentSpotlightCard}>
-          <View style={styles.spotlightHeader}>
-            <View style={styles.spotlightTag}>
-              <View style={styles.activeDot} />
-              <Text style={styles.spotlightTagText}>UPCOMING APPOINTMENT</Text>
+        {upcomingAppointment && (
+          <View style={styles.appointmentSpotlightCard}>
+            <View style={styles.spotlightHeader}>
+              <View style={styles.spotlightTag}>
+                <View style={styles.activeDot} />
+                <Text style={styles.spotlightTagText}>UPCOMING APPOINTMENT</Text>
+              </View>
+              <Text style={styles.spotlightDate}>Confirmed</Text>
             </View>
-            <Text style={styles.spotlightDate}>In 5 Days</Text>
-          </View>
 
-          <View style={styles.spotlightDoctorRow}>
-            <Image
-              source={imagepath.dentistRohan}
-              style={styles.spotlightDoctorImg}
-              resizeMode="cover"
-            />
-            <View style={styles.spotlightDoctorInfo}>
-              <Text style={styles.spotlightDoctorName}>Dr. Rohan Mehta</Text>
-              <Text style={styles.spotlightDoctorSpecialty}>
-                BDS, MDS - Orthodontist
-              </Text>
-              <Text style={styles.spotlightService}>
-                🦷 Teeth Cleaning & Assessment
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.spotlightTimeLocationRow}>
-            <View style={styles.timeBadge}>
-              <Ionicons
-                name="time-outline"
-                size={13}
-                color={colors.primaryBlue}
+            <View style={styles.spotlightDoctorRow}>
+              <Image
+                source={upcomingAppointment.doctorImage || imagepath.dentistRohan}
+                style={styles.spotlightDoctorImg}
+                resizeMode="cover"
               />
-              <Text style={styles.timeBadgeText}> Mon, 6 Oct · 10:00 AM</Text>
+              <View style={styles.spotlightDoctorInfo}>
+                <Text style={styles.spotlightDoctorName}>{upcomingAppointment.doctorName}</Text>
+                <Text style={styles.spotlightDoctorSpecialty}>
+                  {upcomingAppointment.doctorSpecialty || "Orthodontist"}
+                </Text>
+                <Text style={styles.spotlightService}>
+                  🦷 {upcomingAppointment.serviceName}
+                </Text>
+              </View>
             </View>
-            <View style={styles.clinicBadge}>
-              <Ionicons
-                name="location-outline"
-                size={13}
-                color={colors.textSecondary}
-              />
-              <Text style={styles.clinicBadgeText}> SmileCare Clinic</Text>
+
+            <View style={styles.spotlightTimeLocationRow}>
+              <View style={styles.timeBadge}>
+                <Ionicons
+                  name="time-outline"
+                  size={13}
+                  color={colors.primaryBlue}
+                />
+                <Text style={styles.timeBadgeText}>
+                  {" "}{upcomingAppointment.scheduledDate} · {upcomingAppointment.scheduledTime}
+                </Text>
+              </View>
+              <View style={styles.clinicBadge}>
+                <Ionicons
+                  name="location-outline"
+                  size={13}
+                  color={colors.textSecondary}
+                />
+                <Text style={styles.clinicBadgeText}> {upcomingAppointment.clinicName}</Text>
+              </View>
+            </View>
+
+            <View style={styles.spotlightActionsRow}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={handleOpenDoctor}
+                style={styles.spotlightViewBtn}
+              >
+                <Text style={styles.spotlightViewText}>View Doctor Details</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() =>
+                  ToastService.info(
+                    `${upcomingAppointment.clinicName}, ${upcomingAppointment.clinicAddress}`,
+                    "Clinic Directions"
+                  )
+                }
+                style={styles.spotlightDirectionsBtn}
+              >
+                <Ionicons
+                  name="navigate-outline"
+                  size={14}
+                  color={colors.textPrimary}
+                />
+                <Text style={styles.spotlightDirectionsText}>Directions</Text>
+              </TouchableOpacity>
             </View>
           </View>
-
-          <View style={styles.spotlightActionsRow}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={handleOpenDoctor}
-              style={styles.spotlightViewBtn}
-            >
-              <Text style={styles.spotlightViewText}>View Doctor Details</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() =>
-                Alert.alert(
-                  "Directions",
-                  "SmileCare Dental Clinic, 2nd Floor, Connaught Place, New Delhi.",
-                )
-              }
-              style={styles.spotlightDirectionsBtn}
-            >
-              <Ionicons
-                name="navigate-outline"
-                size={14}
-                color={colors.textPrimary}
-              />
-              <Text style={styles.spotlightDirectionsText}>Directions</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        )}
 
         {/* Section: Account & Identity */}
         <Text style={styles.sectionTitle}>Account & Identity</Text>
@@ -320,8 +398,8 @@ const Profile = ({ navigation }: any) => {
             </View>
             <View style={styles.menuRowRight}>
               <StatusBadge
-                label="Verified"
-                variant="success"
+                label={profile.isAadhaarVerified ? "Verified" : "Pending"}
+                variant={profile.isAadhaarVerified ? "success" : "warning"}
                 icon="shield-checkmark"
               />
               <Ionicons
@@ -339,9 +417,9 @@ const Profile = ({ navigation }: any) => {
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() =>
-              Alert.alert(
-                "Dental Records",
-                "3 prescriptions and dental notes on file.",
+              ToastService.info(
+                "3 authorized prescriptions and dental notes on file.",
+                "Dental Records"
               )
             }
             style={styles.menuRow}
@@ -375,9 +453,9 @@ const Profile = ({ navigation }: any) => {
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() =>
-              Alert.alert(
-                "X-Ray Scans",
-                "Full-mouth panoramic OPG scan (Jan 2026) verified.",
+              ToastService.info(
+                "Full-mouth panoramic OPG scan verified.",
+                "X-Ray Scans"
               )
             }
             style={styles.menuRow}
@@ -418,9 +496,9 @@ const Profile = ({ navigation }: any) => {
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() =>
-              Alert.alert(
-                "Insurance",
-                "Policy #SG-99420 active under SmileGuard Health.",
+              ToastService.info(
+                `Policy #${profile.insurancePolicyNumber || "SG-99420"} active under ${profile.insuranceProvider || "SmileGuard Health"} (${profile.insuranceCoveragePercent || 80}% coverage).`,
+                "Dental Insurance"
               )
             }
             style={[styles.menuRow, { borderBottomWidth: 0 }]}
@@ -440,7 +518,7 @@ const Profile = ({ navigation }: any) => {
                   Dental Insurance Card
                 </Text>
                 <Text style={styles.menuRowSubtitle} numberOfLines={1}>
-                  SmileGuard · 80% coverage
+                  {profile.insuranceProvider || "SmileGuard"} · {profile.insuranceCoveragePercent || 80}% coverage
                 </Text>
               </View>
             </View>
@@ -477,7 +555,7 @@ const Profile = ({ navigation }: any) => {
             </View>
             <Switch
               value={remindersEnabled}
-              onValueChange={setRemindersEnabled}
+              onValueChange={handleToggleReminders}
               trackColor={{
                 false: colors.borderLight,
                 true: colors.primaryBlue,
@@ -523,9 +601,9 @@ const Profile = ({ navigation }: any) => {
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() =>
-              Alert.alert(
-                "Support",
+              ToastService.info(
                 "Need help? Email us at support@dentacare.com",
+                "DentaCare Support"
               )
             }
             style={[styles.menuRow, { borderBottomWidth: 0 }]}
@@ -599,9 +677,9 @@ const Profile = ({ navigation }: any) => {
               activeOpacity={0.85}
               onPress={() => {
                 setShowEmergencyModal(false);
-                Alert.alert(
-                  "Calling Emergency...",
+                ToastService.info(
                   "Dialing 1800-DENTACARE (toll-free)",
+                  "Calling Emergency..."
                 );
               }}
               style={styles.emergencyCallBtn}
@@ -637,12 +715,13 @@ const Profile = ({ navigation }: any) => {
             <Text style={styles.modalTitle}>Log Out of DentaCare?</Text>
             <Text style={styles.modalDesc}>
               You will need to sign in again with your mobile number to view
-              appointments.
+              appointments and dental records.
             </Text>
             <View style={styles.modalButtonGroup}>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setShowLogoutModal(false)}
+                disabled={isLoggingOut}
                 style={styles.modalCancelHalfBtn}
               >
                 <Text style={styles.modalCancelText}>Cancel</Text>
@@ -650,9 +729,14 @@ const Profile = ({ navigation }: any) => {
               <TouchableOpacity
                 activeOpacity={0.85}
                 onPress={handleLogoutConfirm}
+                disabled={isLoggingOut}
                 style={styles.modalLogoutHalfBtn}
               >
-                <Text style={styles.modalLogoutText}>Log Out</Text>
+                {isLoggingOut ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Text style={styles.modalLogoutText}>Log Out</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -808,56 +892,44 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontFamily: fontFamily.bold,
-    fontSize: textScale(11),
+    fontSize: textScale(12.5),
     color: colors.textPrimary,
-    textAlign: "center",
   },
   statLabel: {
     fontFamily: fontFamily.regular,
-    fontSize: textScale(9.5),
-    color: colors.textMuted,
+    fontSize: textScale(10),
+    color: colors.textSecondary,
     marginTop: 2,
-    textAlign: "center",
   },
-
   appointmentSpotlightCard: {
     backgroundColor: colors.white,
-    borderRadius: moderateScale(20),
+    borderRadius: moderateScale(18),
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     padding: moderateScale(16),
-    borderWidth: 1.5,
-    borderColor: colors.bannerBorder,
-    marginBottom: moderateScaleVertical(22),
-    shadowColor: colors.primaryBlue,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
+    marginBottom: moderateScaleVertical(18),
   },
   spotlightHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: moderateScaleVertical(12),
+    marginBottom: moderateScaleVertical(10),
   },
   spotlightTag: {
     flexDirection: "row",
     alignItems: "center",
-    gap: moderateScale(6),
-    backgroundColor: colors.primaryBlueLight,
-    paddingHorizontal: moderateScale(10),
-    paddingVertical: moderateScaleVertical(4),
-    borderRadius: moderateScale(10),
+    gap: moderateScale(5),
   },
   activeDot: {
     width: moderateScale(6),
     height: moderateScale(6),
     borderRadius: moderateScale(3),
-    backgroundColor: colors.primaryBlue,
+    backgroundColor: "#10B981",
   },
   spotlightTagText: {
     fontFamily: fontFamily.bold,
-    fontSize: textScale(9),
-    color: colors.primaryBlue,
+    fontSize: textScale(10),
+    color: "#10B981",
     letterSpacing: 0.5,
   },
   spotlightDate: {
@@ -868,11 +940,12 @@ const styles = StyleSheet.create({
   spotlightDoctorRow: {
     flexDirection: "row",
     alignItems: "center",
+    marginBottom: moderateScaleVertical(12),
   },
   spotlightDoctorImg: {
-    width: moderateScale(54),
-    height: moderateScale(54),
-    borderRadius: moderateScale(14),
+    width: moderateScale(50),
+    height: moderateScale(50),
+    borderRadius: moderateScale(12),
   },
   spotlightDoctorInfo: {
     flex: 1,
@@ -884,38 +957,34 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   spotlightDoctorSpecialty: {
-    fontFamily: fontFamily.medium,
-    fontSize: textScale(11),
+    fontFamily: fontFamily.regular,
+    fontSize: textScale(11.5),
     color: colors.textSecondary,
     marginTop: 1,
   },
   spotlightService: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: textScale(11),
+    fontFamily: fontFamily.medium,
+    fontSize: textScale(12),
     color: colors.primaryBlue,
     marginTop: 3,
   },
   spotlightTimeLocationRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: moderateScale(8),
-    marginTop: moderateScaleVertical(12),
-    paddingVertical: moderateScaleVertical(8),
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSubtle,
+    marginBottom: moderateScaleVertical(12),
   },
   timeBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.bgLight,
+    backgroundColor: colors.primaryBlueLight,
     paddingHorizontal: moderateScale(8),
     paddingVertical: moderateScaleVertical(4),
     borderRadius: moderateScale(8),
   },
   timeBadgeText: {
-    fontFamily: fontFamily.semiBold,
+    fontFamily: fontFamily.medium,
     fontSize: textScale(11),
-    color: colors.textPrimary,
+    color: colors.primaryBlue,
   },
   clinicBadge: {
     flexDirection: "row",
@@ -933,15 +1002,13 @@ const styles = StyleSheet.create({
   spotlightActionsRow: {
     flexDirection: "row",
     gap: moderateScale(10),
-    marginTop: moderateScaleVertical(12),
   },
   spotlightViewBtn: {
-    flex: 1.4,
+    flex: 1,
     backgroundColor: colors.primaryBlue,
-    borderRadius: moderateScale(12),
     paddingVertical: moderateScaleVertical(10),
+    borderRadius: moderateScale(12),
     alignItems: "center",
-    justifyContent: "center",
   },
   spotlightViewText: {
     fontFamily: fontFamily.bold,
@@ -949,19 +1016,19 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   spotlightDirectionsBtn: {
-    flex: 1,
-    backgroundColor: colors.bgLight,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    borderRadius: moderateScale(12),
-    paddingVertical: moderateScaleVertical(10),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: moderateScale(4),
+    backgroundColor: colors.bgLight,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    paddingHorizontal: moderateScale(14),
+    paddingVertical: moderateScaleVertical(10),
+    borderRadius: moderateScale(12),
   },
   spotlightDirectionsText: {
-    fontFamily: fontFamily.semiBold,
+    fontFamily: fontFamily.medium,
     fontSize: textScale(12),
     color: colors.textPrimary,
   },
@@ -970,80 +1037,69 @@ const styles = StyleSheet.create({
     fontSize: textScale(15),
     color: colors.textPrimary,
     marginBottom: moderateScaleVertical(10),
-    marginTop: moderateScaleVertical(4),
+    marginTop: moderateScaleVertical(6),
   },
   cardGroup: {
     backgroundColor: colors.white,
-    borderRadius: moderateScale(18),
+    borderRadius: moderateScale(16),
     borderWidth: 1,
     borderColor: colors.borderLight,
-    paddingHorizontal: moderateScale(14),
-    marginBottom: moderateScaleVertical(18),
+    marginBottom: moderateScaleVertical(16),
+    overflow: "hidden",
   },
   menuRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: moderateScale(16),
     paddingVertical: moderateScaleVertical(14),
     borderBottomWidth: 1,
     borderBottomColor: colors.borderSubtle,
-    gap: moderateScale(8),
   },
   menuRowLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: moderateScale(12),
     flex: 1,
+  },
+  menuIconBox: {
+    width: moderateScale(36),
+    height: moderateScale(36),
+    borderRadius: moderateScale(10),
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: moderateScale(12),
   },
   menuTitleCol: {
     flex: 1,
   },
-  menuRowRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: moderateScale(6),
-    flexShrink: 0,
-  },
-  menuIconBox: {
-    width: moderateScale(38),
-    height: moderateScale(38),
-    borderRadius: moderateScale(10),
-    justifyContent: "center",
-    alignItems: "center",
-  },
   menuRowTitle: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: textScale(13),
+    fontFamily: fontFamily.medium,
+    fontSize: textScale(13.5),
     color: colors.textPrimary,
   },
   menuRowSubtitle: {
     fontFamily: fontFamily.regular,
     fontSize: textScale(11),
     color: colors.textMuted,
-    marginTop: 1,
+    marginTop: 2,
   },
-  newBadge: {
-    backgroundColor: "#DCFCE7",
-    paddingHorizontal: moderateScale(8),
-    paddingVertical: moderateScaleVertical(3),
-    borderRadius: moderateScale(8),
-  },
-  newBadgeText: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: textScale(10),
-    color: "#16A34A",
+  menuRowRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: moderateScale(6),
   },
   logoutButton: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "center",
-    gap: moderateScale(8),
+    alignItems: "center",
+    gap: moderateScale(6),
     backgroundColor: "#FEF2F2",
     borderWidth: 1,
-    borderColor: "#FECACA",
-    borderRadius: moderateScale(16),
+    borderColor: "#FEE2E2",
+    borderRadius: moderateScale(14),
     paddingVertical: moderateScaleVertical(14),
-    marginTop: moderateScaleVertical(6),
+    marginTop: moderateScaleVertical(8),
+    marginBottom: moderateScaleVertical(14),
   },
   logoutButtonText: {
     fontFamily: fontFamily.bold,
@@ -1055,11 +1111,11 @@ const styles = StyleSheet.create({
     fontSize: textScale(11),
     color: colors.textMuted,
     textAlign: "center",
-    marginVertical: moderateScaleVertical(18),
+    marginBottom: moderateScaleVertical(10),
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.65)",
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: moderateScale(24),
@@ -1068,7 +1124,7 @@ const styles = StyleSheet.create({
     width: "100%",
     backgroundColor: colors.white,
     borderRadius: moderateScale(24),
-    padding: moderateScale(22),
+    padding: moderateScale(24),
     alignItems: "center",
   },
   modalIconCircle: {
@@ -1077,7 +1133,7 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(30),
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: moderateScaleVertical(12),
+    marginBottom: moderateScaleVertical(14),
   },
   modalTitle: {
     fontFamily: fontFamily.bold,
@@ -1091,17 +1147,17 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: "center",
     lineHeight: textScale(19),
-    marginVertical: moderateScaleVertical(10),
+    marginVertical: moderateScaleVertical(12),
   },
   emergencyCallBtn: {
-    width: "100%",
-    backgroundColor: "#DC2626",
-    borderRadius: moderateScale(16),
-    paddingVertical: moderateScaleVertical(13),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: moderateScale(8),
+    width: "100%",
+    backgroundColor: "#EF4444",
+    borderRadius: moderateScale(14),
+    paddingVertical: moderateScaleVertical(13),
     marginTop: moderateScaleVertical(6),
   },
   emergencyCallText: {
@@ -1110,19 +1166,16 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   modalCancelBtn: {
-    marginTop: moderateScaleVertical(10),
-    paddingVertical: moderateScaleVertical(6),
-  },
-  modalCancelText: {
-    fontFamily: fontFamily.medium,
-    fontSize: textScale(13),
-    color: colors.textSecondary,
+    width: "100%",
+    paddingVertical: moderateScaleVertical(12),
+    alignItems: "center",
+    marginTop: moderateScaleVertical(6),
   },
   modalButtonGroup: {
     flexDirection: "row",
-    gap: moderateScale(12),
-    marginTop: moderateScaleVertical(14),
+    gap: moderateScale(10),
     width: "100%",
+    marginTop: moderateScaleVertical(8),
   },
   modalCancelHalfBtn: {
     flex: 1,
@@ -1139,6 +1192,11 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(14),
     paddingVertical: moderateScaleVertical(12),
     alignItems: "center",
+  },
+  modalCancelText: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: textScale(13),
+    color: colors.textSecondary,
   },
   modalLogoutText: {
     fontFamily: fontFamily.bold,
