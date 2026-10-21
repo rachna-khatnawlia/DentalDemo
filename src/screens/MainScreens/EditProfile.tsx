@@ -39,6 +39,17 @@ interface EditProfileProps {
 
 type GenderType = "Female" | "Male" | "Other";
 
+const BLOOD_GROUPS = [
+  { type: "A+", label: "A Positive", rh: "Rh+" },
+  { type: "A-", label: "A Negative", rh: "Rh-" },
+  { type: "B+", label: "B Positive", rh: "Rh+" },
+  { type: "B-", label: "B Negative", rh: "Rh-" },
+  { type: "O+", label: "O Positive", rh: "Rh+" },
+  { type: "O-", label: "O Negative", rh: "Rh-" },
+  { type: "AB+", label: "AB Positive", rh: "Rh+" },
+  { type: "AB-", label: "AB Negative", rh: "Rh-" },
+];
+
 const EditProfile: React.FC<EditProfileProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
@@ -64,6 +75,8 @@ const EditProfile: React.FC<EditProfileProps> = ({ navigation }) => {
   // Modals & Upload State
   const [activeUploadSide, setActiveUploadSide] = useState<"front" | "back" | null>(null);
   const [previewDocSide, setPreviewDocSide] = useState<"front" | "back" | null>(null);
+  const [showBloodGroupModal, setShowBloodGroupModal] = useState(false);
+  const [tempBloodGroup, setTempBloodGroup] = useState("O+");
   const [isSaving, setIsSaving] = useState(false);
 
   // Load current profile on mount
@@ -508,25 +521,16 @@ const EditProfile: React.FC<EditProfileProps> = ({ navigation }) => {
                 <Text style={styles.fieldLabel}>Blood Group</Text>
                 <TouchableOpacity
                   activeOpacity={0.7}
-                  onPress={() =>
-                    Alert.alert(
-                      "Blood Group",
-                      "Select your blood group (O+, A+, B+, AB+, etc.)",
-                      [
-                        { text: "O+", onPress: () => setBloodGroup("O+") },
-                        { text: "A+", onPress: () => setBloodGroup("A+") },
-                        { text: "B+", onPress: () => setBloodGroup("B+") },
-                        { text: "AB+", onPress: () => setBloodGroup("AB+") },
-                        { text: "Cancel", style: "cancel" },
-                      ]
-                    )
-                  }
+                  onPress={() => {
+                    setTempBloodGroup(bloodGroup);
+                    setShowBloodGroupModal(true);
+                  }}
                   style={styles.inputContainer}
                 >
-                  <Ionicons
-                    name="water-outline"
+                  <MaterialCommunityIcons
+                    name="water"
                     size={moderateScale(17)}
-                    color="#EF4444"
+                    color="#DC2626"
                     style={styles.inputLeadingIcon}
                   />
                   <Text style={styles.staticFieldText}>{bloodGroup}</Text>
@@ -1100,6 +1104,122 @@ const EditProfile: React.FC<EditProfileProps> = ({ navigation }) => {
               >
                 <Text style={styles.previewDoneText}>Close Preview</Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal: Blood Group Selection */}
+        <Modal
+          visible={showBloodGroupModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowBloodGroupModal(false)}
+        >
+          <View style={styles.bloodModalBackdrop}>
+            <View style={styles.bloodModalCard}>
+              <View style={styles.bloodModalHeader}>
+                <View style={styles.bloodIconCircle}>
+                  <MaterialCommunityIcons
+                    name="water"
+                    size={moderateScale(24)}
+                    color="#DC2626"
+                  />
+                </View>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setShowBloodGroupModal(false)}
+                  style={styles.bloodCloseBtn}
+                >
+                  <Ionicons name="close" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.bloodModalTitle}>Select Blood Group</Text>
+              <Text style={styles.bloodModalDesc}>
+                Crucial for emergency care, local anesthesia, and surgical cross-matching during dental operations.
+              </Text>
+
+              {/* Blood Groups 4x2 Grid */}
+              <View style={styles.bloodGrid}>
+                {BLOOD_GROUPS.map((item) => {
+                  const isSelected = tempBloodGroup === item.type;
+                  return (
+                    <TouchableOpacity
+                      key={item.type}
+                      activeOpacity={0.7}
+                      onPress={() => setTempBloodGroup(item.type)}
+                      style={[
+                        styles.bloodGridItem,
+                        isSelected && styles.bloodGridItemSelected,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.bloodGridText,
+                          isSelected && styles.bloodGridTextSelected,
+                        ]}
+                      >
+                        {item.type}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.bloodGridSubtext,
+                          isSelected && styles.bloodGridSubtextSelected,
+                        ]}
+                      >
+                        {item.rh}
+                      </Text>
+                      {isSelected && (
+                        <View style={styles.bloodCheckmark}>
+                          <Ionicons name="checkmark" size={10} color={colors.white} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Selected preview pill */}
+              <View style={styles.bloodNoteRow}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={16}
+                  color={colors.primaryBlue}
+                />
+                <Text style={styles.bloodNoteText}>
+                  Selected:{" "}
+                  <Text style={{ fontFamily: fontFamily.bold, color: "#DC2626" }}>
+                    {tempBloodGroup}
+                  </Text>{" "}
+                  (
+                  {BLOOD_GROUPS.find((b) => b.type === tempBloodGroup)?.label ||
+                    tempBloodGroup}
+                  )
+                </Text>
+              </View>
+
+              {/* Modal Actions */}
+              <View style={styles.bloodButtonGroup}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setShowBloodGroupModal(false)}
+                  style={styles.bloodCancelBtn}
+                >
+                  <Text style={styles.bloodCancelText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    setBloodGroup(tempBloodGroup);
+                    setShowBloodGroupModal(false);
+                    ToastService.info(`Selected blood group: ${tempBloodGroup}`);
+                  }}
+                  style={styles.bloodSaveBtn}
+                >
+                  <Text style={styles.bloodSaveBtnText}>Confirm</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>
@@ -1901,6 +2021,160 @@ const styles = StyleSheet.create({
   },
   previewDoneText: {
     fontFamily: fontFamily.semiBold,
+    fontSize: textScale(13),
+    color: colors.white,
+  },
+
+  // Blood Group Modal Styles
+  bloodModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: moderateScale(24),
+  },
+  bloodModalCard: {
+    width: "100%",
+    backgroundColor: colors.white,
+    borderRadius: moderateScale(24),
+    padding: moderateScale(20),
+  },
+  bloodModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: moderateScaleVertical(12),
+  },
+  bloodIconCircle: {
+    width: moderateScale(46),
+    height: moderateScale(46),
+    borderRadius: moderateScale(23),
+    backgroundColor: "#FEE2E2",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  bloodCloseBtn: {
+    width: moderateScale(34),
+    height: moderateScale(34),
+    borderRadius: moderateScale(17),
+    backgroundColor: colors.bgLight,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  bloodModalTitle: {
+    fontFamily: fontFamily.bold,
+    fontSize: textScale(18),
+    color: colors.textPrimary,
+    marginBottom: moderateScaleVertical(4),
+  },
+  bloodModalDesc: {
+    fontFamily: fontFamily.regular,
+    fontSize: textScale(12),
+    color: colors.textSecondary,
+    lineHeight: textScale(17),
+    marginBottom: moderateScaleVertical(16),
+  },
+  bloodGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: moderateScaleVertical(10),
+    marginBottom: moderateScaleVertical(14),
+  },
+  bloodGridItem: {
+    width: "23%",
+    aspectRatio: 1,
+    borderRadius: moderateScale(14),
+    backgroundColor: colors.bgLight,
+    borderWidth: 1.5,
+    borderColor: colors.borderLight,
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  bloodGridItemSelected: {
+    backgroundColor: "#FEF2F2",
+    borderColor: "#DC2626",
+  },
+  bloodGridText: {
+    fontFamily: fontFamily.bold,
+    fontSize: textScale(17),
+    color: colors.textPrimary,
+  },
+  bloodGridTextSelected: {
+    color: "#DC2626",
+  },
+  bloodGridSubtext: {
+    fontFamily: fontFamily.medium,
+    fontSize: textScale(9),
+    color: colors.textMuted,
+    marginTop: moderateScaleVertical(2),
+  },
+  bloodGridSubtextSelected: {
+    color: "#DC2626",
+  },
+  bloodCheckmark: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: moderateScale(14),
+    height: moderateScale(14),
+    borderRadius: moderateScale(7),
+    backgroundColor: "#DC2626",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  bloodNoteRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EFF6FF",
+    borderRadius: moderateScale(12),
+    paddingHorizontal: moderateScale(12),
+    paddingVertical: moderateScaleVertical(8),
+    gap: moderateScale(6),
+    marginBottom: moderateScaleVertical(12),
+  },
+  bloodNoteText: {
+    flex: 1,
+    fontFamily: fontFamily.regular,
+    fontSize: textScale(11),
+    color: colors.textPrimary,
+  },
+  bloodButtonGroup: {
+    flexDirection: "row",
+    gap: moderateScale(10),
+    width: "100%",
+    marginTop: moderateScaleVertical(8),
+  },
+  bloodCancelBtn: {
+    flex: 1,
+    backgroundColor: colors.bgLight,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: moderateScale(14),
+    paddingVertical: moderateScaleVertical(12),
+    alignItems: "center",
+  },
+  bloodCancelText: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: textScale(13),
+    color: colors.textSecondary,
+  },
+  bloodSaveBtn: {
+    flex: 1.2,
+    backgroundColor: "#DC2626",
+    borderRadius: moderateScale(14),
+    paddingVertical: moderateScaleVertical(12),
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#DC2626",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  bloodSaveBtnText: {
+    fontFamily: fontFamily.bold,
     fontSize: textScale(13),
     color: colors.white,
   },
