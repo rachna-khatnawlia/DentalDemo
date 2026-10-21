@@ -6,6 +6,7 @@ import BookAppointment from "../screens/MainScreens/BookAppointment";
 import Profile from "../screens/MainScreens/Profile";
 import NotificationScreen from "../screens/MainScreens/NotificationScreen";
 import EditProfile from "../screens/MainScreens/EditProfile";
+import HelpCenter from "../screens/MainScreens/HelpCenter";
 
 // create a component
 const MainStack = (Stack: any) => {
@@ -39,6 +40,11 @@ const MainStack = (Stack: any) => {
       <Stack.Screen
         name={NavigationStrings.EDIT_PROFILE}
         component={EditProfile}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name={NavigationStrings.HELP_CENTER}
+        component={HelpCenter}
         options={{ headerShown: false }}
       />
     </>

@@ -10,6 +10,7 @@ export default {
   PROFILE: "Profile",
   NOTIFICATIONS: "Notifications",
   EDIT_PROFILE: "EditProfile",
+  HELP_CENTER: "HelpCenter",
 };
 
 

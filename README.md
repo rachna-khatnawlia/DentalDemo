@@ -28,7 +28,7 @@ A modern dental care and appointment booking mobile app built with **React Nativ
 - **Find Dentists**: Browse dental specialists by category (Orthodontics, Cleaning, Cosmetic, etc.).
 - **Book Appointments**: Choose dates and available time slots with instant confirmation.
 - **Appointment History & Reminders**: Real-time notifications and checkup reminders.
-- **Patient Profile**: View visits, health records, and loyalty points with masked credentials.
+- **Patient Profile**: View visits and health records with masked credentials.
 - **Toast Feedback**: Non-blocking toast notifications for errors, warnings, and success messages.
 
 ---

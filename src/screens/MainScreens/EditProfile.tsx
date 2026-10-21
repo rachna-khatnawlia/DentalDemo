@@ -567,7 +567,7 @@ const EditProfile: React.FC<EditProfileProps> = ({ navigation }) => {
                   />
                 </View>
                 <Text style={styles.sectionSubheading}>
-                  Aadhaar is required for cashless insurance & ABHA digital records
+                  Aadhaar is required for identity verification & ABHA digital records
                 </Text>
               </View>
             </View>

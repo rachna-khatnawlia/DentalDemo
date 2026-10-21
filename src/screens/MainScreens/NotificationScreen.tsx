@@ -189,12 +189,6 @@ const NotificationScreen: React.FC<NotificationScreenProps> = ({
           color: "#10B981",
           bgColor: "#ECFDF5",
         };
-      case "reward":
-        return {
-          icon: "sparkles-outline" as const,
-          color: "#8B5CF6",
-          bgColor: "#F3E8FF",
-        };
       case "tip":
       default:
         return {

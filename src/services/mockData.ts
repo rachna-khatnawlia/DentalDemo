@@ -123,12 +123,7 @@ export const MOCK_PATIENT_PROFILE: PatientProfile = {
   city: "New Delhi",
   aadhaarNumber: "4582 9102 3456",
   isAadhaarVerified: true,
-  membershipTier: "Platinum",
   visitsCount: 4,
-  rewardPoints: 450,
-  insurancePolicyNumber: "SG-99420",
-  insuranceProvider: "SmileGuard Health",
-  insuranceCoveragePercent: 80,
   avatarUrl: "user_arjun.jpg",
 };
 
@@ -157,7 +152,6 @@ export const MOCK_PATIENT_SUMMARY: PatientSummary = {
   upcomingAppointment: MOCK_UPCOMING_APPOINTMENT,
   recentPrescriptionsCount: 3,
   unseenReportsCount: 2,
-  activeRewardPoints: 450,
 };
 
 export const MOCK_NOTIFICATIONS: NotificationItem[] = [
@@ -188,14 +182,14 @@ export const MOCK_NOTIFICATIONS: NotificationItem[] = [
   {
     id: "notif_3",
     category: "offers",
-    title: "You Earned 150 Smile Points! 🎁",
-    message: "Congratulations! Your DentaCare Platinum Tier benefits have unlocked a 20% discount coupon on clear aligners.",
+    title: "Special 20% Discount Offer! 🎁",
+    message: "Enjoy an exclusive 20% seasonal promotional discount on clear aligners this month.",
     time: "5h ago",
     dateGroup: "Today",
     isRead: false,
-    iconType: "reward",
-    actionLabel: "View Rewards",
-    actionScreen: "Profile",
+    iconType: "tip",
+    actionLabel: "Book Now",
+    actionScreen: "BookAppointment",
   },
   {
     id: "notif_4",

@@ -28,12 +28,7 @@ export interface PatientProfile {
   city: string;
   aadhaarNumber?: string;
   isAadhaarVerified: boolean;
-  membershipTier: "Standard" | "Gold" | "Platinum";
   visitsCount: number;
-  rewardPoints: number;
-  insurancePolicyNumber?: string;
-  insuranceProvider?: string;
-  insuranceCoveragePercent?: number;
   avatarUrl?: string;
 }
 
@@ -42,7 +37,6 @@ export interface PatientSummary {
   upcomingAppointment: Appointment | null;
   recentPrescriptionsCount: number;
   unseenReportsCount: number;
-  activeRewardPoints: number;
 }
 
 export interface Doctor {
@@ -139,7 +133,7 @@ export interface NotificationItem {
   time: string;
   dateGroup: "Today" | "Yesterday" | "Earlier";
   isRead: boolean;
-  iconType: "calendar" | "checkup" | "scan" | "reward" | "tip";
+  iconType: "calendar" | "checkup" | "scan" | "tip";
   actionLabel?: string;
   actionScreen?: string;
   actionParams?: any;

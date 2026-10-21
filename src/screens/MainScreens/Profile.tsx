@@ -47,7 +47,6 @@ const Profile = ({ navigation }: any) => {
 
   // Modals
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [showEmergencyModal, setShowEmergencyModal] = useState(false);
 
   const loadProfileData = useCallback(async () => {
     try {
@@ -201,18 +200,6 @@ const Profile = ({ navigation }: any) => {
               <Text style={styles.userLocation}> {profile.city}</Text>
             </View>
           </View>
-
-          {/* Membership Badge */}
-          <View style={styles.memberBadge}>
-            <Ionicons
-              name="shield-checkmark"
-              size={moderateScale(14)}
-              color={colors.primaryBlue}
-            />
-            <Text style={styles.memberBadgeText}>
-              DentaCare {profile.membershipTier} Patient
-            </Text>
-          </View>
         </View>
 
         {/* Dental Stats Tiles Grid */}
@@ -250,42 +237,6 @@ const Profile = ({ navigation }: any) => {
             </Text>
             <Text numberOfLines={1} style={styles.statLabel}>
               Completed
-            </Text>
-          </View>
-
-          <View style={styles.statTile}>
-            <View
-              style={[styles.statIconCircle, { backgroundColor: "#FEF3C7" }]}
-            >
-              <Ionicons
-                name="shield-outline"
-                size={moderateScale(18)}
-                color="#F59E0B"
-              />
-            </View>
-            <Text numberOfLines={1} style={styles.statValue}>
-              {profile.insurancePolicyNumber ? "Active" : "None"}
-            </Text>
-            <Text numberOfLines={1} style={styles.statLabel}>
-              Insurance
-            </Text>
-          </View>
-
-          <View style={styles.statTile}>
-            <View
-              style={[styles.statIconCircle, { backgroundColor: "#F3E8FF" }]}
-            >
-              <Ionicons
-                name="sparkles-outline"
-                size={moderateScale(18)}
-                color="#8B5CF6"
-              />
-            </View>
-            <Text numberOfLines={1} style={styles.statValue}>
-              {profile.rewardPoints} Pts
-            </Text>
-            <Text numberOfLines={1} style={styles.statLabel}>
-              Rewards
             </Text>
           </View>
         </View>
@@ -458,7 +409,7 @@ const Profile = ({ navigation }: any) => {
                 "X-Ray Scans"
               )
             }
-            style={styles.menuRow}
+            style={[styles.menuRow, { borderBottomWidth: 0 }]}
           >
             <View style={styles.menuRowLeft}>
               <View
@@ -491,42 +442,6 @@ const Profile = ({ navigation }: any) => {
                 color={colors.textMuted}
               />
             </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() =>
-              ToastService.info(
-                `Policy #${profile.insurancePolicyNumber || "SG-99420"} active under ${profile.insuranceProvider || "SmileGuard Health"} (${profile.insuranceCoveragePercent || 80}% coverage).`,
-                "Dental Insurance"
-              )
-            }
-            style={[styles.menuRow, { borderBottomWidth: 0 }]}
-          >
-            <View style={styles.menuRowLeft}>
-              <View
-                style={[styles.menuIconBox, { backgroundColor: "#FEF2F2" }]}
-              >
-                <Ionicons
-                  name="shield-checkmark-outline"
-                  size={moderateScale(18)}
-                  color="#DC2626"
-                />
-              </View>
-              <View style={styles.menuTitleCol}>
-                <Text style={styles.menuRowTitle} numberOfLines={1}>
-                  Dental Insurance Card
-                </Text>
-                <Text style={styles.menuRowSubtitle} numberOfLines={1}>
-                  {profile.insuranceProvider || "SmileGuard"} · {profile.insuranceCoveragePercent || 80}% coverage
-                </Text>
-              </View>
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={18}
-              color={colors.textMuted}
-            />
           </TouchableOpacity>
         </View>
 
@@ -566,7 +481,11 @@ const Profile = ({ navigation }: any) => {
 
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => setShowEmergencyModal(true)}
+            onPress={() =>
+              navigation.navigate(NavigationStrings.HELP_CENTER, {
+                initialCategory: "emergency",
+              })
+            }
             style={styles.menuRow}
           >
             <View style={styles.menuRowLeft}>
@@ -600,12 +519,7 @@ const Profile = ({ navigation }: any) => {
 
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() =>
-              ToastService.info(
-                "Need help? Email us at support@dentacare.com",
-                "DentaCare Support"
-              )
-            }
+            onPress={() => navigation.navigate(NavigationStrings.HELP_CENTER)}
             style={[styles.menuRow, { borderBottomWidth: 0 }]}
           >
             <View style={styles.menuRowLeft}>
@@ -623,7 +537,7 @@ const Profile = ({ navigation }: any) => {
                   Help Center & FAQ
                 </Text>
                 <Text style={styles.menuRowSubtitle} numberOfLines={1}>
-                  Care guides and billing questions
+                  Care guides, helpline numbers & email
                 </Text>
               </View>
             </View>
@@ -655,49 +569,7 @@ const Profile = ({ navigation }: any) => {
         </Text>
       </ScrollView>
 
-      {/* Emergency Helpline Modal */}
-      <Modal visible={showEmergencyModal} transparent animationType="fade">
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View
-              style={[styles.modalIconCircle, { backgroundColor: "#FEE2E2" }]}
-            >
-              <Ionicons
-                name="medical"
-                size={moderateScale(32)}
-                color="#DC2626"
-              />
-            </View>
-            <Text style={styles.modalTitle}>Dental Emergency Hotline</Text>
-            <Text style={styles.modalDesc}>
-              In case of severe bleeding, chipped tooth, or acute tooth pain,
-              our emergency dentists are available 24/7.
-            </Text>
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => {
-                setShowEmergencyModal(false);
-                ToastService.info(
-                  "Dialing 1800-DENTACARE (toll-free)",
-                  "Calling Emergency..."
-                );
-              }}
-              style={styles.emergencyCallBtn}
-            >
-              <Ionicons name="call" size={18} color={colors.white} />
-              <Text style={styles.emergencyCallText}>Call 1800-DENTACARE</Text>
-            </TouchableOpacity>
 
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => setShowEmergencyModal(false)}
-              style={styles.modalCancelBtn}
-            >
-              <Text style={styles.modalCancelText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
 
       {/* Logout Confirmation Modal */}
       <Modal visible={showLogoutModal} transparent animationType="fade">
@@ -850,34 +722,17 @@ const styles = StyleSheet.create({
     fontSize: textScale(12),
     color: colors.textSecondary,
   },
-  memberBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: moderateScale(6),
-    backgroundColor: colors.primaryBlueLight,
-    paddingHorizontal: moderateScale(14),
-    paddingVertical: moderateScaleVertical(6),
-    borderRadius: moderateScale(20),
-    marginTop: moderateScaleVertical(14),
-    borderWidth: 1,
-    borderColor: colors.bannerBorder,
-  },
-  memberBadgeText: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: textScale(11),
-    color: colors.primaryBlue,
-  },
   statsGrid: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: moderateScale(12),
     marginBottom: moderateScaleVertical(18),
   },
   statTile: {
-    width: "23%",
+    flex: 1,
     backgroundColor: colors.white,
     borderRadius: moderateScale(16),
-    paddingVertical: moderateScaleVertical(12),
-    paddingHorizontal: moderateScale(6),
+    paddingVertical: moderateScaleVertical(14),
+    paddingHorizontal: moderateScale(8),
     alignItems: "center",
     borderWidth: 1,
     borderColor: colors.borderLight,
@@ -1148,28 +1003,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: textScale(19),
     marginVertical: moderateScaleVertical(12),
-  },
-  emergencyCallBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: moderateScale(8),
-    width: "100%",
-    backgroundColor: "#EF4444",
-    borderRadius: moderateScale(14),
-    paddingVertical: moderateScaleVertical(13),
-    marginTop: moderateScaleVertical(6),
-  },
-  emergencyCallText: {
-    fontFamily: fontFamily.bold,
-    fontSize: textScale(14),
-    color: colors.white,
-  },
-  modalCancelBtn: {
-    width: "100%",
-    paddingVertical: moderateScaleVertical(12),
-    alignItems: "center",
-    marginTop: moderateScaleVertical(6),
   },
   modalButtonGroup: {
     flexDirection: "row",

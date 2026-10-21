@@ -45,7 +45,7 @@ export const patientService = {
   },
 
   /**
-   * Fetch home/profile summary (visits, points, upcoming appointment)
+   * Fetch home/profile summary (visits, upcoming appointment)
    */
   async getSummary(): Promise<PatientSummary> {
     try {
