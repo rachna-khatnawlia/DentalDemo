@@ -117,6 +117,19 @@ export interface Appointment {
   tokenNumber?: number;
   createdAt?: string;
   updatedAt?: string;
+  diagnosis?: string;
+  treatmentSummary?: string;
+  prescriptions?: string[];
+  followUpAdvice?: string;
+  branchArea?: string;
+
+  // Patient Booking Info (Self vs Someone Else)
+  bookingFor?: "SELF" | "OTHER";
+  patientName?: string;
+  patientAge?: number | string;
+  patientGender?: "Female" | "Male" | "Other";
+  patientAadhaar?: string;
+  patientRelation?: string;
 }
 
 export interface TimeSlot {

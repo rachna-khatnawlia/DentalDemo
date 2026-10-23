@@ -30,8 +30,9 @@ import {
 import patientService from "../../services/patientService";
 import notificationService from "../../services/notificationService";
 import authService from "../../services/authService";
-import { PatientProfile, Appointment } from "../../types/models";
-import { MOCK_PATIENT_PROFILE, MOCK_UPCOMING_APPOINTMENT } from "../../services/mockData";
+import appointmentService from "../../services/appointmentService";
+import { PatientProfile } from "../../types/models";
+import { MOCK_PATIENT_PROFILE } from "../../services/mockData";
 import ToastService from "../../services/toastService";
 
 const Profile = ({ navigation }: any) => {
@@ -40,7 +41,6 @@ const Profile = ({ navigation }: any) => {
 
   // Dynamic Server State
   const [profile, setProfile] = useState<PatientProfile>(MOCK_PATIENT_PROFILE);
-  const [upcomingAppointment, setUpcomingAppointment] = useState<Appointment | null>(MOCK_UPCOMING_APPOINTMENT);
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -50,14 +50,13 @@ const Profile = ({ navigation }: any) => {
 
   const loadProfileData = useCallback(async () => {
     try {
-      const [profData, summaryData, prefs] = await Promise.all([
+      const [profData, , prefs] = await Promise.all([
         patientService.getProfile(),
         patientService.getSummary(),
         notificationService.getPreferences(),
       ]);
 
       setProfile(profData);
-      setUpcomingAppointment(summaryData?.upcomingAppointment || null);
       setRemindersEnabled(prefs.appointmentReminders);
     } catch (e) {
       console.warn("[Profile] Error loading profile data", e);
@@ -66,6 +65,10 @@ const Profile = ({ navigation }: any) => {
 
   useEffect(() => {
     loadProfileData();
+    const unsubscribe = appointmentService.subscribe(() => {
+      loadProfileData();
+    });
+    return () => unsubscribe();
   }, [loadProfileData]);
 
   const onRefresh = async () => {
@@ -98,22 +101,6 @@ const Profile = ({ navigation }: any) => {
       setShowLogoutModal(false);
       ToastService.info("You have been signed out.", "Logged Out");
       dispatch(onLogout());
-    }
-  };
-
-  const handleOpenDoctor = () => {
-    if (upcomingAppointment) {
-      navigation.navigate(NavigationStrings.DOCTOR_DETAIL, {
-        doctor: {
-          id: upcomingAppointment.doctorId,
-          name: upcomingAppointment.doctorName,
-          degree: upcomingAppointment.doctorSpecialty || "BDS, MDS - Orthodontist",
-          rating: "4.8",
-          reviewsCount: "320",
-          location: upcomingAppointment.clinicAddress,
-          image: upcomingAppointment.doctorImage || imagepath.dentistRohan,
-        },
-      });
     }
   };
 
@@ -206,23 +193,31 @@ const Profile = ({ navigation }: any) => {
         <View style={styles.statsGrid}>
           <View style={styles.statTile}>
             <View
-              style={[styles.statIconCircle, { backgroundColor: "#EBF5FF" }]}
+              style={[styles.statIconCircle, { backgroundColor: "#FEF2F2" }]}
             >
               <MaterialCommunityIcons
-                name="tooth-outline"
+                name="water-outline"
                 size={moderateScale(18)}
-                color={colors.primaryBlue}
+                color="#EF4444"
               />
             </View>
             <Text numberOfLines={1} style={styles.statValue}>
-              {upcomingAppointment ? upcomingAppointment.scheduledDate.slice(5) : "None"}
+              {profile.bloodGroup || "O+"}
             </Text>
             <Text numberOfLines={1} style={styles.statLabel}>
-              Next Visit
+              Blood Group
             </Text>
           </View>
 
-          <View style={styles.statTile}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() =>
+              navigation.navigate(NavigationStrings.MY_APPOINTMENTS, {
+                initialTab: "past",
+              })
+            }
+            style={styles.statTile}
+          >
             <View
               style={[styles.statIconCircle, { backgroundColor: "#ECFDF5" }]}
             >
@@ -236,89 +231,10 @@ const Profile = ({ navigation }: any) => {
               {profile.visitsCount} Visits
             </Text>
             <Text numberOfLines={1} style={styles.statLabel}>
-              Completed
+              Checkups History →
             </Text>
-          </View>
+          </TouchableOpacity>
         </View>
-
-        {/* Upcoming Appointment Spotlight Card */}
-        {upcomingAppointment && (
-          <View style={styles.appointmentSpotlightCard}>
-            <View style={styles.spotlightHeader}>
-              <View style={styles.spotlightTag}>
-                <View style={styles.activeDot} />
-                <Text style={styles.spotlightTagText}>UPCOMING APPOINTMENT</Text>
-              </View>
-              <Text style={styles.spotlightDate}>Confirmed</Text>
-            </View>
-
-            <View style={styles.spotlightDoctorRow}>
-              <Image
-                source={upcomingAppointment.doctorImage || imagepath.dentistRohan}
-                style={styles.spotlightDoctorImg}
-                resizeMode="cover"
-              />
-              <View style={styles.spotlightDoctorInfo}>
-                <Text style={styles.spotlightDoctorName}>{upcomingAppointment.doctorName}</Text>
-                <Text style={styles.spotlightDoctorSpecialty}>
-                  {upcomingAppointment.doctorSpecialty || "Orthodontist"}
-                </Text>
-                <Text style={styles.spotlightService}>
-                  🦷 {upcomingAppointment.serviceName}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.spotlightTimeLocationRow}>
-              <View style={styles.timeBadge}>
-                <Ionicons
-                  name="time-outline"
-                  size={13}
-                  color={colors.primaryBlue}
-                />
-                <Text style={styles.timeBadgeText}>
-                  {" "}{upcomingAppointment.scheduledDate} · {upcomingAppointment.scheduledTime}
-                </Text>
-              </View>
-              <View style={styles.clinicBadge}>
-                <Ionicons
-                  name="location-outline"
-                  size={13}
-                  color={colors.textSecondary}
-                />
-                <Text style={styles.clinicBadgeText}> {upcomingAppointment.clinicName}</Text>
-              </View>
-            </View>
-
-            <View style={styles.spotlightActionsRow}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={handleOpenDoctor}
-                style={styles.spotlightViewBtn}
-              >
-                <Text style={styles.spotlightViewText}>View Doctor Details</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() =>
-                  ToastService.info(
-                    `${upcomingAppointment.clinicName}, ${upcomingAppointment.clinicAddress}`,
-                    "Clinic Directions"
-                  )
-                }
-                style={styles.spotlightDirectionsBtn}
-              >
-                <Ionicons
-                  name="navigate-outline"
-                  size={14}
-                  color={colors.textPrimary}
-                />
-                <Text style={styles.spotlightDirectionsText}>Directions</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
 
         {/* Section: Account & Identity */}
         <Text style={styles.sectionTitle}>Account & Identity</Text>
@@ -367,30 +283,60 @@ const Profile = ({ navigation }: any) => {
         <View style={styles.cardGroup}>
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() =>
-              ToastService.info(
-                "3 authorized prescriptions and dental notes on file.",
-                "Dental Records"
-              )
-            }
+            onPress={() => navigation.navigate(NavigationStrings.MY_APPOINTMENTS)}
             style={styles.menuRow}
           >
             <View style={styles.menuRowLeft}>
               <View
-                style={[styles.menuIconBox, { backgroundColor: "#EBF5FF" }]}
+                style={[styles.menuIconBox, { backgroundColor: "#EFF6FF" }]}
               >
                 <Ionicons
-                  name="document-text-outline"
+                  name="calendar-outline"
                   size={moderateScale(18)}
                   color={colors.primaryBlue}
                 />
               </View>
               <View style={styles.menuTitleCol}>
                 <Text style={styles.menuRowTitle} numberOfLines={1}>
-                  Dental History & Prescriptions
+                  Appointments & Visits
                 </Text>
                 <Text style={styles.menuRowSubtitle} numberOfLines={1}>
-                  View past checkups & notes
+                  Upcoming visits, reschedule & cancellation
+                </Text>
+              </View>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={colors.textMuted}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() =>
+              navigation.navigate(NavigationStrings.MY_APPOINTMENTS, {
+                initialTab: "past",
+              })
+            }
+            style={styles.menuRow}
+          >
+            <View style={styles.menuRowLeft}>
+              <View
+                style={[styles.menuIconBox, { backgroundColor: "#ECFDF5" }]}
+              >
+                <Ionicons
+                  name="document-text-outline"
+                  size={moderateScale(18)}
+                  color="#059669"
+                />
+              </View>
+              <View style={styles.menuTitleCol}>
+                <Text style={styles.menuRowTitle} numberOfLines={1}>
+                  Past Checkups & Prescriptions
+                </Text>
+                <Text style={styles.menuRowSubtitle} numberOfLines={1}>
+                  Clinical diagnoses, procedures & advice
                 </Text>
               </View>
             </View>
@@ -856,18 +802,43 @@ const styles = StyleSheet.create({
   },
   spotlightActionsRow: {
     flexDirection: "row",
-    gap: moderateScale(10),
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: moderateScale(8),
+    rowGap: moderateScaleVertical(6),
+  },
+  spotlightManageBtn: {
+    flex: 1.1,
+    minWidth: moderateScale(125),
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: moderateScale(4),
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    paddingVertical: moderateScaleVertical(9),
+    paddingHorizontal: moderateScale(6),
+    borderRadius: moderateScale(12),
+  },
+  spotlightManageText: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: textScale(11),
+    color: colors.primaryBlue,
   },
   spotlightViewBtn: {
     flex: 1,
+    minWidth: moderateScale(95),
     backgroundColor: colors.primaryBlue,
-    paddingVertical: moderateScaleVertical(10),
+    paddingVertical: moderateScaleVertical(9),
+    paddingHorizontal: moderateScale(6),
     borderRadius: moderateScale(12),
     alignItems: "center",
+    justifyContent: "center",
   },
   spotlightViewText: {
     fontFamily: fontFamily.bold,
-    fontSize: textScale(12),
+    fontSize: textScale(11.5),
     color: colors.white,
   },
   spotlightDirectionsBtn: {

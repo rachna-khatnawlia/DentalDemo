@@ -148,6 +148,45 @@ export const ValidationSchema = {
   },
 
   /**
+   * Validates patient age
+   */
+  validatePatientAge(age: string | number): ValidationResult {
+    if (age === undefined || age === null || String(age).trim() === "") {
+      return { isValid: false, error: "Please enter patient's age." };
+    }
+    const num = Number(age);
+    if (isNaN(num) || num <= 0 || num > 125) {
+      return { isValid: false, error: "Please enter a valid age between 1 and 125." };
+    }
+    return { isValid: true, cleanValue: String(num) };
+  },
+
+  /**
+   * Validates details when booking for someone else
+   */
+  validateOtherPatient(data: {
+    fullName: string;
+    age: string;
+    gender: string;
+    aadhaar: string;
+  }): ValidationResult {
+    const nameCheck = this.validateFullName(data.fullName);
+    if (!nameCheck.isValid) return nameCheck;
+
+    const ageCheck = this.validatePatientAge(data.age);
+    if (!ageCheck.isValid) return ageCheck;
+
+    if (!data.gender || !data.gender.trim()) {
+      return { isValid: false, error: "Please select patient's gender." };
+    }
+
+    const aadhaarCheck = this.validateAadhaar(data.aadhaar, true);
+    if (!aadhaarCheck.isValid) return aadhaarCheck;
+
+    return { isValid: true };
+  },
+
+  /**
    * Validates appointment booking parameters
    */
   validateBookingSelection(params: {

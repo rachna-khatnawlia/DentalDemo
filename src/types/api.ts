@@ -76,6 +76,12 @@ export interface CreateAppointmentRequest {
   timeSlot: string;
   notes?: string;
   patientId?: string;
+  bookingFor?: "SELF" | "OTHER";
+  patientName?: string;
+  patientAge?: number | string;
+  patientGender?: "Female" | "Male" | "Other";
+  patientAadhaar?: string;
+  patientRelation?: string;
 }
 
 export interface CreateAppointmentResponse {
